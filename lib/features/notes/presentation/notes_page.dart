@@ -5,9 +5,11 @@ class NotesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      appBar: AppBar(title: Text('یادداشت‌ها')),
-      body: Center(child: Text('هسته یادداشت‌ها در فازهای بعدی پیاده‌سازی می‌شود.')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('یادداشت‌ها')),
+      body: const Center(
+        child: Text('هسته یادداشت‌ها در فازهای بعدی پیاده‌سازی می‌شود.'),
+      ),
     );
   }
 }
