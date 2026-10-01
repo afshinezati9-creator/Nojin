@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/icons/nojin_icons.dart';
 import '../../core/theme/nojin_tokens.dart';
 import 'widgets/nojin_components.dart';
 
@@ -10,14 +11,16 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const items = [
-      (title: 'یادداشت‌ها', path: '/notes', icon: Icons.notes_rounded),
-      (title: 'مالی', path: '/finance', icon: Icons.account_balance_wallet_rounded),
-      (title: 'برنامه‌ریزی', path: '/planning', icon: Icons.event_note_rounded),
-      (title: 'اطلاعات', path: '/info', icon: Icons.inventory_2_rounded),
+      (title: 'یادداشت‌ها', path: '/notes', icon: NojinIconName.notes),
+      (title: 'مالی', path: '/finance', icon: NojinIconName.finance),
+      (title: 'برنامه‌ریزی', path: '/planning', icon: NojinIconName.planning),
+      (title: 'اطلاعات', path: '/info', icon: NojinIconName.info),
     ];
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth >= 900 ? 4 : constraints.maxWidth >= 560 ? 2 : 1;
+
         return ListView(
           padding: const EdgeInsets.all(NojinSpacing.xxl),
           children: [
@@ -37,6 +40,7 @@ class HomePage extends StatelessWidget {
               itemCount: items.length,
               itemBuilder: (context, index) {
                 final item = items[index];
+
                 return NojinSurface(
                   child: InkWell(
                     borderRadius: BorderRadius.circular(NojinRadii.md),
@@ -49,9 +53,9 @@ class HomePage extends StatelessWidget {
                             gradient: NojinGradients.primary,
                             borderRadius: BorderRadius.circular(NojinRadii.md),
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(NojinSpacing.md),
-                            child: Icon(item.icon, color: Colors.white, size: 28),
+                          child: const Padding(
+                            padding: EdgeInsets.all(NojinSpacing.md),
+                            child: NojinIcon(item.icon, color: Colors.white, size: 28),
                           ),
                         ),
                         const SizedBox(height: NojinSpacing.md),
