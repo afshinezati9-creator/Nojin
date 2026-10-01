@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'router/app_router.dart';
 import '../core/theme/nojin_theme.dart';
+import 'router/app_router.dart';
 
 class NojinApp extends ConsumerWidget {
   const NojinApp({super.key});
