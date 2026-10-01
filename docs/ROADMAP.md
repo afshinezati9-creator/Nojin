@@ -23,7 +23,7 @@ Splash، header، brand، tabs، FAB، overlay، dialog، bottom sheet و shell 
 سیستم آیکون بدون Emoji و قابل استفاده مجدد.
 
 ## Phase 06 — Responsive / Adaptive
-پشتیبانی از موبایل، تبلت و landscape.
+پشتیبانی از موبایل، تبلت، دسکتاپ و landscape با breakpointهای مرکزی و adaptive shell.
 
 ## Phase 07 — Local Database
 مدل‌ها، migration، index، repository و integrity برای Notes/Finance/Planning/Info/Settings.
