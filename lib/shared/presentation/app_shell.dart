@@ -21,10 +21,8 @@ class NojinAppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final location = GoRouterState.of(context).uri.path;
-    final selected = _index(location);
+    final selected = _index(GoRouterState.of(context).uri.path);
     final wide = MediaQuery.sizeOf(context).width >= 800;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('نوژین'),
