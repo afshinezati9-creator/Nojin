@@ -5,9 +5,11 @@ class PlanningPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      appBar: AppBar(title: Text('برنامه‌ریزی')),
-      body: Center(child: Text('هسته برنامه‌ریزی در فازهای بعدی پیاده‌سازی می‌شود.')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('برنامه‌ریزی')),
+      body: const Center(
+        child: Text('هسته برنامه‌ریزی در فازهای بعدی پیاده‌سازی می‌شود.'),
+      ),
     );
   }
 }
