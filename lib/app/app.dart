@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/iran/iran_localization.dart';
 import '../core/theme/nojin_theme.dart';
 import 'router/app_router.dart';
 
@@ -18,10 +19,10 @@ class NojinApp extends ConsumerWidget {
       darkTheme: NojinTheme.dark,
       themeMode: ThemeMode.system,
       routerConfig: router,
-      locale: const Locale('fa'),
-      supportedLocales: const [Locale('fa')],
+      locale: IranLocalization.locale,
+      supportedLocales: const [IranLocalization.locale],
       builder: (context, child) => Directionality(
-        textDirection: TextDirection.rtl,
+        textDirection: IranLocalization.direction,
         child: child ?? const SizedBox.shrink(),
       ),
     );
