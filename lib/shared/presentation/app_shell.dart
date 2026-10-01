@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/icons/nojin_icon_button.dart';
 import '../../core/icons/nojin_icons.dart';
+import '../../core/layout/nojin_breakpoints.dart';
 import '../../core/theme/nojin_tokens.dart';
 
 class NojinAppShell extends StatelessWidget {
@@ -24,45 +25,68 @@ class NojinAppShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final selected = _index(GoRouterState.of(context).uri.path);
-    final wide = MediaQuery.sizeOf(context).width >= 800;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final compact = NojinBreakpoints.isCompact(width);
+        final selected = _index(GoRouterState.of(context).uri.path);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('نوژین'),
-        actions: [
-          NojinIconButton(icon: NojinIconName.search, onPressed: () {}, tooltip: 'جستجو'),
-          const SizedBox(width: NojinSpacing.sm),
-        ],
-      ),
-      body: Row(
-        children: [
-          if (wide) _buildRail(context, selected),
-          Expanded(child: SafeArea(top: false, child: child)),
-        ],
-      ),
-      bottomNavigationBar: wide
-          ? null
-          : NavigationBar(
-              selectedIndex: selected,
-              onDestinationSelected: (index) => context.go(destinations[index].path),
-              destinations: [
-                for (final destination in destinations)
-                  NavigationDestination(
-                    icon: NojinIcon(destination.icon),
-                    selectedIcon: NojinIcon(destination.icon, color: NojinColors.indigo),
-                    label: destination.label,
-                  ),
-              ],
-            ),
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('نوژین'),
+            actions: [
+              NojinIconButton(
+                icon: NojinIconName.search,
+                onPressed: () {},
+                tooltip: 'جستجو',
+              ),
+              const SizedBox(width: NojinSpacing.sm),
+            ],
+          ),
+          body: Row(
+            children: [
+              if (!compact) _buildRail(context, selected),
+              Expanded(
+                child: SafeArea(
+                  top: false,
+                  child: child,
+                ),
+              ),
+            ],
+          ),
+          bottomNavigationBar: compact
+              ? NavigationBar(
+                  selectedIndex: selected,
+                  onDestinationSelected: (index) => context.go(destinations[index].path),
+                  labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                  destinations: [
+                    for (final destination in destinations)
+                      NavigationDestination(
+                        icon: NojinIcon(destination.icon),
+                        selectedIcon: NojinIcon(
+                          destination.icon,
+                          color: NojinColors.indigo,
+                        ),
+                        label: destination.label,
+                      ),
+                  ],
+                )
+              : null,
+        );
+      },
     );
   }
 
   Widget _buildRail(BuildContext context, int selected) {
+    final width = MediaQuery.sizeOf(context).width;
+    final expanded = NojinBreakpoints.isWide(width);
+    final labeled = NojinBreakpoints.isExpanded(width);
+
     return NavigationRail(
       selectedIndex: selected,
       onDestinationSelected: (index) => context.go(destinations[index].path),
-      labelType: NavigationRailLabelType.all,
+      extended: expanded,
+      labelType: labeled ? NavigationRailLabelType.all : NavigationRailLabelType.none,
       groupAlignment: -0.85,
       leading: Padding(
         padding: const EdgeInsets.only(bottom: NojinSpacing.xl),
@@ -71,10 +95,25 @@ class NojinAppShell extends StatelessWidget {
             gradient: NojinGradients.primary,
             borderRadius: BorderRadius.circular(NojinRadii.md),
           ),
-          child: const SizedBox(
-            width: 44,
+          child: SizedBox(
+            width: expanded ? 176 : 44,
             height: 44,
-            child: NojinIcon(NojinIconName.sparkle, color: Colors.white),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const NojinIcon(NojinIconName.sparkle, color: Colors.white),
+                if (expanded) ...[
+                  const SizedBox(width: NojinSpacing.sm),
+                  Text(
+                    'نوژین',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
