@@ -80,12 +80,13 @@ class NojinAppShell extends StatelessWidget {
   Widget _buildRail(BuildContext context, int selected) {
     final width = MediaQuery.sizeOf(context).width;
     final expanded = NojinBreakpoints.isWide(width);
+    final labeled = NojinBreakpoints.isExpanded(width);
 
     return NavigationRail(
       selectedIndex: selected,
       onDestinationSelected: (index) => context.go(destinations[index].path),
       extended: expanded,
-      labelType: expanded ? NavigationRailLabelType.none : NavigationRailLabelType.all,
+      labelType: labeled ? NavigationRailLabelType.all : NavigationRailLabelType.none,
       groupAlignment: -0.85,
       leading: Padding(
         padding: const EdgeInsets.only(bottom: NojinSpacing.xl),
