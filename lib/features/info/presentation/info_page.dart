@@ -5,9 +5,11 @@ class InfoPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      appBar: AppBar(title: Text('اطلاعات')),
-      body: Center(child: Text('مخزن اطلاعات در فازهای بعدی پیاده‌سازی می‌شود.')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('اطلاعات')),
+      body: const Center(
+        child: Text('مخزن اطلاعات در فازهای بعدی پیاده‌سازی می‌شود.'),
+      ),
     );
   }
 }
