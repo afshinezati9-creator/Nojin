@@ -53,8 +53,8 @@ class HomePage extends StatelessWidget {
                             gradient: NojinGradients.primary,
                             borderRadius: BorderRadius.circular(NojinRadii.md),
                           ),
-                          child: const Padding(
-                            padding: EdgeInsets.all(NojinSpacing.md),
+                          child: Padding(
+                            padding: const EdgeInsets.all(NojinSpacing.md),
                             child: NojinIcon(item.icon, color: Colors.white, size: 28),
                           ),
                         ),
