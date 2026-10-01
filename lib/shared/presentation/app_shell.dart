@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+import '../../core/icons/nojin_icon_button.dart';
+import '../../core/icons/nojin_icons.dart';
 import '../../core/theme/nojin_tokens.dart';
 
 class NojinAppShell extends StatelessWidget {
   const NojinAppShell({super.key, required this.child});
   final Widget child;
 
-  static const destinations = <({String label, String path, IconData icon})>[
-    (label: 'خانه', path: '/', icon: Icons.home_rounded),
-    (label: 'یادداشت‌ها', path: '/notes', icon: Icons.notes_rounded),
-    (label: 'مالی', path: '/finance', icon: Icons.account_balance_wallet_rounded),
-    (label: 'برنامه‌ریزی', path: '/planning', icon: Icons.event_note_rounded),
-    (label: 'اطلاعات', path: '/info', icon: Icons.inventory_2_rounded),
+  static const destinations = <({String label, String path, NojinIconName icon})>[
+    (label: 'خانه', path: '/', icon: NojinIconName.home),
+    (label: 'یادداشت‌ها', path: '/notes', icon: NojinIconName.notes),
+    (label: 'مالی', path: '/finance', icon: NojinIconName.finance),
+    (label: 'برنامه‌ریزی', path: '/planning', icon: NojinIconName.planning),
+    (label: 'اطلاعات', path: '/info', icon: NojinIconName.info),
   ];
 
   int _index(String location) {
@@ -23,11 +26,12 @@ class NojinAppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final selected = _index(GoRouterState.of(context).uri.path);
     final wide = MediaQuery.sizeOf(context).width >= 800;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('نوژین'),
         actions: [
-          IconButton(tooltip: 'جستجو', onPressed: () {}, icon: const Icon(Icons.search_rounded)),
+          NojinIconButton(icon: NojinIconName.search, onPressed: () {}, tooltip: 'جستجو'),
           const SizedBox(width: NojinSpacing.sm),
         ],
       ),
@@ -44,7 +48,11 @@ class NojinAppShell extends StatelessWidget {
               onDestinationSelected: (index) => context.go(destinations[index].path),
               destinations: [
                 for (final destination in destinations)
-                  NavigationDestination(icon: Icon(destination.icon), label: destination.label),
+                  NavigationDestination(
+                    icon: NojinIcon(destination.icon),
+                    selectedIcon: NojinIcon(destination.icon, color: NojinColors.indigo),
+                    label: destination.label,
+                  ),
               ],
             ),
     );
@@ -66,15 +74,15 @@ class NojinAppShell extends StatelessWidget {
           child: const SizedBox(
             width: 44,
             height: 44,
-            child: Icon(Icons.auto_awesome_rounded, color: Colors.white),
+            child: NojinIcon(NojinIconName.sparkle, color: Colors.white),
           ),
         ),
       ),
       destinations: [
         for (final destination in destinations)
           NavigationRailDestination(
-            icon: Icon(destination.icon),
-            selectedIcon: Icon(destination.icon),
+            icon: NojinIcon(destination.icon),
+            selectedIcon: NojinIcon(destination.icon, color: NojinColors.indigo),
             label: Text(destination.label),
           ),
       ],
