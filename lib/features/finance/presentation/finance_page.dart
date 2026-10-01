@@ -5,9 +5,11 @@ class FinancePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      appBar: AppBar(title: Text('مالی')),
-      body: Center(child: Text('هسته مالی در فازهای بعدی پیاده‌سازی می‌شود.')),
+    return Scaffold(
+      appBar: AppBar(title: const Text('مالی')),
+      body: const Center(
+        child: Text('هسته مالی در فازهای بعدی پیاده‌سازی می‌شود.'),
+      ),
     );
   }
 }
