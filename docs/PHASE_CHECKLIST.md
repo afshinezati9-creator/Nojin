@@ -1,6 +1,6 @@
 # NOJÎN — Phase Checklist
 
-آخرین وضعیت: **Phase 13 — Iranian Finance**
+آخرین وضعیت: **Phase 15 — Installments**
 
 ## Completed
 
@@ -25,7 +25,7 @@
 - [x] Phase 12 — Finance Foundation
 - [x] Phase 13 — Iranian Finance
 - [x] Phase 14 — Finance Dashboard
-- [ ] Phase 15 — Installments
+- [x] Phase 15 — Installments
 - [ ] Phase 16 — Debt / Receivable
 - [ ] Phase 17 — Goals / Emergency Fund
 

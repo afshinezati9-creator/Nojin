@@ -176,4 +176,80 @@ void main() {
     expect(summary.recent, isEmpty);
   });
 
+  test('creates installment schedule with remainder on the last installment', () async {
+    final plan = await repository.createInstallmentPlan(
+      title: 'خرید لپ‌تاپ',
+      totalAmount: 1000000,
+      installmentCount: 3,
+      currency: IranCurrency.toman,
+      firstDueAt: DateTime.utc(2026, 10, 10),
+    );
+    final items = await repository.listInstallments(plan.id);
+    expect(items, hasLength(3));
+    expect(items.map((item) => item.amount).toList(), [333333, 333333, 333334]);
+    expect(items[0].dueAt, DateTime.utc(2026, 10, 10));
+    expect(items[1].dueAt, DateTime.utc(2026, 11, 10));
+    expect(items[2].dueAt, DateTime.utc(2026, 12, 10));
+  });
+
+  test('marks overdue installments from their due date without mutating storage', () async {
+    final plan = await repository.createInstallmentPlan(
+      title: 'خرید معوق',
+      totalAmount: 900000,
+      installmentCount: 3,
+      currency: IranCurrency.toman,
+      firstDueAt: DateTime.utc(2020, 1, 1),
+    );
+    final item = (await repository.listInstallments(plan.id)).first;
+    expect(item.statusAt(DateTime.utc(2020, 1, 1, 23, 59)), InstallmentStatus.pending);
+    expect(item.statusAt(DateTime.utc(2020, 2, 1)), InstallmentStatus.overdue);
+    expect(item.paidAt, isNull);
+  });
+
+  test('paying an installment creates an expense transaction and marks it paid', () async {
+    final account = await repository.createAccount(
+      name: 'حساب پرداخت',
+      type: FinanceAccountType.bank,
+      openingBalance: 500000,
+    );
+    final plan = await repository.createInstallmentPlan(
+      title: 'خرید قسطی',
+      totalAmount: 300000,
+      installmentCount: 3,
+      currency: IranCurrency.toman,
+      firstDueAt: DateTime.utc(2026, 10, 10),
+    );
+    final item = (await repository.listInstallments(plan.id)).first;
+    await repository.payInstallment(installmentId: item.id, accountId: account.id);
+    final paid = (await repository.listInstallments(plan.id)).first;
+    expect(paid.paidAt, isNotNull);
+    expect(paid.transactionId, isNotNull);
+    expect((await repository.getAccount(account.id))?.balance, 400000);
+    final transactions = await repository.listTransactions(account.id);
+    expect(transactions, hasLength(1));
+    expect(transactions.single.type, FinanceTransactionType.expense);
+    expect(transactions.single.amount, 100000);
+  });
+
+  test('rejects payment when account currency does not match installment', () async {
+    final account = await repository.createAccount(
+      name: 'حساب ریالی',
+      type: FinanceAccountType.bank,
+      currency: IranCurrency.rial,
+      openingBalance: 1000000,
+    );
+    final plan = await repository.createInstallmentPlan(
+      title: 'خرید تومانی',
+      totalAmount: 300000,
+      installmentCount: 3,
+      currency: IranCurrency.toman,
+      firstDueAt: DateTime.utc(2026, 10, 10),
+    );
+    final item = (await repository.listInstallments(plan.id)).first;
+    expect(
+      () => repository.payInstallment(installmentId: item.id, accountId: account.id),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
 }

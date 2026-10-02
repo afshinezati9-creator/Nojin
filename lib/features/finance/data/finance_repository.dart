@@ -221,6 +221,171 @@ class FinanceRepository {
     });
   }
 
+  Future<List<FinanceInstallmentPlan>> listInstallmentPlans() async {
+    final rows = await _database.connection.runSelect(
+      'SELECT * FROM finance_installment_plans ORDER BY first_due_at ASC, created_at DESC',
+      [],
+    );
+    return rows.map(_installmentPlanFromRow).toList(growable: false);
+  }
+
+  Future<FinanceInstallmentPlan?> getInstallmentPlan(String id) async {
+    final rows = await _database.connection.runSelect(
+      'SELECT * FROM finance_installment_plans WHERE id = ? LIMIT 1',
+      [id],
+    );
+    return rows.isEmpty ? null : _installmentPlanFromRow(rows.first);
+  }
+
+  Future<List<FinanceInstallment>> listInstallments(String planId) async {
+    final rows = await _database.connection.runSelect(
+      'SELECT * FROM finance_installments WHERE plan_id = ? ORDER BY sequence ASC',
+      [planId],
+    );
+    return rows.map(_installmentFromRow).toList(growable: false);
+  }
+
+  Future<FinanceInstallmentPlan> createInstallmentPlan({
+    required String title,
+    required int totalAmount,
+    required int installmentCount,
+    required IranCurrency currency,
+    required DateTime firstDueAt,
+    int intervalMonths = 1,
+    String note = '',
+  }) async {
+    final clean = title.trim();
+    if (clean.isEmpty) throw ArgumentError('عنوان قسط الزامی است.');
+    if (totalAmount <= 0) throw ArgumentError('مبلغ کل باید بیشتر از صفر باشد.');
+    if (installmentCount <= 0 || installmentCount > 120) {
+      throw ArgumentError('تعداد اقساط باید بین ۱ تا ۱۲۰ باشد.');
+    }
+    if (intervalMonths <= 0 || intervalMonths > 24) {
+      throw ArgumentError('فاصله اقساط باید بین ۱ تا ۲۴ ماه باشد.');
+    }
+
+    final now = DateTime.now().toUtc();
+    final first = DateTime.utc(firstDueAt.year, firstDueAt.month, firstDueAt.day);
+    final baseAmount = totalAmount ~/ installmentCount;
+    final remainder = totalAmount - (baseAmount * installmentCount);
+    final plan = FinanceInstallmentPlan(
+      id: _newId(),
+      title: clean,
+      totalAmount: totalAmount,
+      installmentAmount: baseAmount,
+      installmentCount: installmentCount,
+      currency: currency,
+      firstDueAt: first,
+      intervalMonths: intervalMonths,
+      note: note.trim(),
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    await _database.transaction((tx) async {
+      await tx.runCustom(
+        'INSERT INTO finance_installment_plans('
+        'id,title,total_amount,installment_amount,installment_count,currency,first_due_at,interval_months,note,created_at,updated_at'
+        ') VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+        [
+          plan.id, plan.title, plan.totalAmount, plan.installmentAmount,
+          plan.installmentCount, plan.currency.name, plan.firstDueAt.millisecondsSinceEpoch,
+          plan.intervalMonths, plan.note, now.millisecondsSinceEpoch, now.millisecondsSinceEpoch,
+        ],
+      );
+      for (var index = 0; index < installmentCount; index++) {
+        final amount = index == installmentCount - 1 ? baseAmount + remainder : baseAmount;
+        final dueAt = _addMonths(first, index * intervalMonths);
+        await tx.runCustom(
+          'INSERT INTO finance_installments(id,plan_id,sequence,due_at,amount,paid_at,transaction_id) VALUES(?,?,?,?,?,?,?)',
+          [_newId(), plan.id, index + 1, dueAt.millisecondsSinceEpoch, amount, null, null],
+        );
+      }
+    });
+    return plan;
+  }
+
+  Future<void> payInstallment({
+    required String installmentId,
+    required String accountId,
+  }) async {
+    final rows = await _database.connection.runSelect(
+      'SELECT i.id, i.plan_id, i.sequence, i.due_at, i.amount, i.paid_at, '
+      'p.title AS plan_title, p.currency AS plan_currency, a.currency AS account_currency, a.is_archived '
+      'FROM finance_installments i '
+      'JOIN finance_installment_plans p ON p.id = i.plan_id '
+      'JOIN finance_accounts a ON a.id = ? '
+      'WHERE i.id = ? LIMIT 1',
+      [accountId, installmentId],
+    );
+    if (rows.isEmpty) throw StateError('قسط یا حساب پیدا نشد.');
+    final row = rows.first;
+    if (row['paid_at'] != null) throw StateError('این قسط قبلاً پرداخت شده است.');
+    if (row['is_archived'].toString() == '1') throw StateError('حساب انتخاب‌شده بایگانی شده است.');
+    if (row['account_currency'].toString() != row['plan_currency'].toString()) {
+      throw ArgumentError('واحد پول حساب و قسط باید یکسان باشد.');
+    }
+
+    final now = DateTime.now().toUtc();
+    final transactionId = _newId();
+    final amount = int.parse(row['amount'].toString());
+    final title = 'قسط ' + row['sequence'].toString() + ': ' + row['plan_title'].toString();
+
+    await _database.transaction((tx) async {
+      await tx.runCustom(
+        'INSERT INTO finance_transactions(id,account_id,title,amount,transaction_type,note,occurred_at,created_at) VALUES(?,?,?,?,?,?,?,?)',
+        [transactionId, accountId, title, amount, FinanceTransactionType.expense.name, 'پرداخت قسط', now.millisecondsSinceEpoch, now.millisecondsSinceEpoch],
+      );
+      await tx.runCustom(
+        'UPDATE finance_accounts SET balance = balance - ?, updated_at = ? WHERE id = ?',
+        [amount, now.millisecondsSinceEpoch, accountId],
+      );
+      await tx.runCustom(
+        'UPDATE finance_installments SET paid_at = ?, transaction_id = ? WHERE id = ? AND paid_at IS NULL',
+        [now.millisecondsSinceEpoch, transactionId, installmentId],
+      );
+    });
+  }
+
+  FinanceInstallmentPlan _installmentPlanFromRow(Map<String, Object?> row) {
+    return FinanceInstallmentPlan(
+      id: row['id'].toString(),
+      title: row['title'].toString(),
+      totalAmount: int.parse(row['total_amount'].toString()),
+      installmentAmount: int.parse(row['installment_amount'].toString()),
+      installmentCount: int.parse(row['installment_count'].toString()),
+      currency: IranCurrency.values.firstWhere(
+        (item) => item.name == row['currency'].toString(),
+        orElse: () => IranCurrency.toman,
+      ),
+      firstDueAt: DateTime.fromMillisecondsSinceEpoch(int.parse(row['first_due_at'].toString()), isUtc: true),
+      intervalMonths: int.parse(row['interval_months'].toString()),
+      note: row['note']?.toString() ?? '',
+      createdAt: DateTime.fromMillisecondsSinceEpoch(int.parse(row['created_at'].toString()), isUtc: true),
+      updatedAt: DateTime.fromMillisecondsSinceEpoch(int.parse(row['updated_at'].toString()), isUtc: true),
+    );
+  }
+
+  FinanceInstallment _installmentFromRow(Map<String, Object?> row) {
+    return FinanceInstallment(
+      id: row['id'].toString(),
+      planId: row['plan_id'].toString(),
+      sequence: int.parse(row['sequence'].toString()),
+      dueAt: DateTime.fromMillisecondsSinceEpoch(int.parse(row['due_at'].toString()), isUtc: true),
+      amount: int.parse(row['amount'].toString()),
+      paidAt: row['paid_at'] == null ? null : DateTime.fromMillisecondsSinceEpoch(int.parse(row['paid_at'].toString()), isUtc: true),
+      transactionId: row['transaction_id']?.toString(),
+    );
+  }
+
+  static DateTime _addMonths(DateTime date, int months) {
+    final target = date.month + months;
+    final year = date.year + ((target - 1) ~/ 12);
+    final month = ((target - 1) % 12) + 1;
+    final lastDay = DateTime.utc(year, month + 1, 0).day;
+    return DateTime.utc(year, month, date.day > lastDay ? lastDay : date.day);
+  }
+
   _BankDetails _validateBankDetails({
     required FinanceAccountType type,
     String? bankName,

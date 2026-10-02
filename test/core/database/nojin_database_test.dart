@@ -16,8 +16,8 @@ void main() {
 
   tearDown(() => database.close());
 
-  test('creates version 3 schema and indexes', () async {
-    expect(await database.schemaVersion(), 3);
+  test('creates version 4 schema and indexes', () async {
+    expect(await database.schemaVersion(), 4);
     expect(await database.isHealthy(), isTrue);
 
     final tables = await database.connection.runSelect(
@@ -46,7 +46,7 @@ void main() {
       [],
     );
 
-    expect(indexes.length, 12);
+    expect(indexes.length, 15);
   });
 
   test('settings repository persists and updates values', () async {
@@ -121,4 +121,38 @@ void main() {
       DatabaseConnection.fromExecutor(NativeDatabase.memory()),
     );
   });
+  test('migrates version 3 database to installment schema', () async {
+    final raw = NativeDatabase.memory();
+    await raw.runCustom('CREATE TABLE nojin_meta (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL)');
+    await raw.runCustom(
+      'CREATE TABLE finance_accounts (id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, '
+      'account_type TEXT NOT NULL, currency TEXT NOT NULL DEFAULT "toman", balance INTEGER NOT NULL DEFAULT 0, '
+      'is_archived INTEGER NOT NULL DEFAULT 0, bank_name TEXT, account_number TEXT, card_number TEXT, sheba TEXT, '
+      'created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
+    );
+    await raw.runCustom('CREATE TABLE finance_transactions (id TEXT NOT NULL PRIMARY KEY, account_id TEXT NOT NULL, title TEXT NOT NULL, amount INTEGER NOT NULL, transaction_type TEXT NOT NULL, note TEXT NOT NULL DEFAULT "", occurred_at INTEGER NOT NULL, created_at INTEGER NOT NULL)');
+    await raw.runCustom('INSERT INTO nojin_meta(key, value) VALUES (?, ?)', ['schema_version', '3']);
+
+    final upgraded = await NojinDatabase.fromConnection(DatabaseConnection.fromExecutor(raw));
+    expect(await upgraded.schemaVersion(), 4);
+    final tables = await upgraded.connection.runSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'finance_installment%' ORDER BY name",
+      [],
+    );
+    expect(tables.map((row) => row['name']).toList(), containsAll(<Object?>[
+      'finance_installment_plans',
+      'finance_installments',
+    ]));
+    final indexes = await upgraded.connection.runSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name LIKE 'finance_installment%' ORDER BY name",
+      [],
+    );
+    expect(indexes.length, 3);
+    await upgraded.close();
+    database = await NojinDatabase.fromConnection(
+      DatabaseConnection.fromExecutor(NativeDatabase.memory()),
+    );
+  });
+
 }
+

@@ -9,6 +9,7 @@ import '../../../core/layout/nojin_breakpoints.dart';
 import '../../../core/theme/nojin_tokens.dart';
 import '../application/finance_state.dart';
 import '../domain/finance_models.dart';
+import 'installments_section.dart';
 
 class FinancePage extends ConsumerWidget {
   const FinancePage({super.key});
@@ -39,6 +40,8 @@ class _FinanceBody extends ConsumerWidget {
       ]),
       const SizedBox(height: 24),
       const _FinanceDashboardSection(),
+      const SizedBox(height: 28),
+      const InstallmentsSection(),
       const SizedBox(height: 28),
       Row(children: [const Expanded(child: Text('حساب‌ها', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800))), Text(IranNumber.format(accounts.length) + ' حساب', style: const TextStyle(color: NojinColors.text2))]),
       const SizedBox(height: 12), if (accounts.isEmpty) _Empty(onAdd: onAdd) else ...accounts.map((a) => _AccountCard(account: a)),

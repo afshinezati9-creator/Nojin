@@ -90,3 +90,67 @@ class FinanceDashboardSummary {
   int get rialNet => rialIncome - rialExpense;
   bool get isEmpty => tomanIncome == 0 && tomanExpense == 0 && rialIncome == 0 && rialExpense == 0 && recent.isEmpty;
 }
+
+
+enum InstallmentStatus { paid, overdue, pending }
+
+extension InstallmentStatusX on InstallmentStatus {
+  String get label => switch (this) {
+    InstallmentStatus.paid => 'پرداخت‌شده',
+    InstallmentStatus.overdue => 'معوق',
+    InstallmentStatus.pending => 'در انتظار',
+  };
+}
+
+class FinanceInstallmentPlan {
+  const FinanceInstallmentPlan({
+    required this.id,
+    required this.title,
+    required this.totalAmount,
+    required this.installmentAmount,
+    required this.installmentCount,
+    required this.currency,
+    required this.firstDueAt,
+    required this.intervalMonths,
+    required this.note,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  final String id;
+  final String title;
+  final int totalAmount;
+  final int installmentAmount;
+  final int installmentCount;
+  final IranCurrency currency;
+  final DateTime firstDueAt;
+  final int intervalMonths;
+  final String note;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+}
+
+class FinanceInstallment {
+  const FinanceInstallment({
+    required this.id,
+    required this.planId,
+    required this.sequence,
+    required this.dueAt,
+    required this.amount,
+    required this.paidAt,
+    required this.transactionId,
+  });
+  final String id;
+  final String planId;
+  final int sequence;
+  final DateTime dueAt;
+  final int amount;
+  final DateTime? paidAt;
+  final String? transactionId;
+
+  InstallmentStatus statusAt(DateTime now) {
+    if (paidAt != null) return InstallmentStatus.paid;
+    final today = DateTime.utc(now.year, now.month, now.day);
+    final dueDate = DateTime.utc(dueAt.year, dueAt.month, dueAt.day);
+    return today.isAfter(dueDate) ? InstallmentStatus.overdue : InstallmentStatus.pending;
+  }
+}
