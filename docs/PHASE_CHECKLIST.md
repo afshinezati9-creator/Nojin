@@ -1,6 +1,6 @@
 # NOJÎN — Phase Checklist
 
-آخرین وضعیت: **Phase 16 — Debt / Receivable**
+آخرین وضعیت: **Phase 17 — Goals / Emergency Fund**
 
 ## Completed
 
@@ -27,7 +27,7 @@
 - [x] Phase 14 — Finance Dashboard
 - [x] Phase 15 — Installments
 - [x] Phase 16 — Debt / Receivable
-- [ ] Phase 17 — Goals / Emergency Fund
+- [x] Phase 17 — Goals / Emergency Fund
 
 ### Planning
 - [ ] Phase 18 — Planning Engine

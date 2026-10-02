@@ -115,3 +115,13 @@ final financeDebtPaymentsProvider = FutureProvider.family<List<FinanceDebtPaymen
   final repo = await ref.watch(financeRepositoryProvider.future);
   return repo.listDebtPayments(debtId);
 });
+
+final financeGoalsProvider = FutureProvider<List<FinanceGoal>>((ref) async {
+  final repo = await ref.watch(financeRepositoryProvider.future);
+  return repo.listGoals();
+});
+
+final financeGoalEntriesProvider = FutureProvider.family<List<FinanceGoalEntry>, String>((ref, goalId) async {
+  final repo = await ref.watch(financeRepositoryProvider.future);
+  return repo.listGoalEntries(goalId);
+});

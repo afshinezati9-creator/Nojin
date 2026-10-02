@@ -11,6 +11,7 @@ import '../application/finance_state.dart';
 import '../domain/finance_models.dart';
 import 'installments_section.dart';
 import 'debt_receivable_section.dart';
+import 'goals_emergency_fund_section.dart';
 
 class FinancePage extends ConsumerWidget {
   const FinancePage({super.key});
@@ -18,7 +19,7 @@ class FinancePage extends ConsumerWidget {
     final state = ref.watch(financeAccountsProvider);
     return Scaffold(appBar: AppBar(title: const Text('مالی'), actions: [NojinIconButton(icon: NojinIconName.add, tooltip: 'حساب جدید', onPressed: () => _accountForm(context, ref)), const SizedBox(width: 8)]),
       body: state.when(loading: () => const Center(child: CircularProgressIndicator()), error: (e, _) => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text('بارگذاری مالی انجام نشد'), Text(e.toString()), OutlinedButton(onPressed: () => ref.read(financeAccountsProvider.notifier).refresh(), child: const Text('تلاش دوباره'))])),
-        data: (accounts) => _FinanceBody(accounts: accounts, onAdd: () => _accountForm(context, ref)));
+        data: (accounts) => _FinanceBody(accounts: accounts, onAdd: () => _accountForm(context, ref))));
   }
   Future<void> _accountForm(BuildContext context, WidgetRef ref) async {
     final d = await showModalBottomSheet<_AccountDraft>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const _AccountForm());
@@ -45,6 +46,8 @@ class _FinanceBody extends ConsumerWidget {
       const InstallmentsSection(),
       const SizedBox(height: 28),
       const DebtReceivableSection(),
+      const SizedBox(height: 28),
+      const GoalsEmergencyFundSection(),
       const SizedBox(height: 28),
       Row(children: [const Expanded(child: Text('حساب‌ها', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800))), Text(IranNumber.format(accounts.length) + ' حساب', style: const TextStyle(color: NojinColors.text2))]),
       const SizedBox(height: 12), if (accounts.isEmpty) _Empty(onAdd: onAdd) else ...accounts.map((a) => _AccountCard(account: a)),
@@ -114,7 +117,7 @@ class _AccountFormState extends State<_AccountForm> {
         TextField(controller: cardNumber, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'شماره کارت ۱۶ رقمی')), const SizedBox(height: 10),
         TextField(controller: sheba, decoration: const InputDecoration(labelText: 'شماره شبا', hintText: 'IR...')),
       ],
-      const SizedBox(height: 16), SizedBox(width: double.infinity, child: FilledButton(onPressed: () { final value = int.tryParse(IranNumber.toEnglish(balance.text).replaceAll(RegExp(r'[^0-9]'), '')) ?? 0; Navigator.pop(context, _AccountDraft(name.text, type, currency, value, bankName.text, accountNumber.text, cardNumber.text, sheba.text)); }, child: const Text('ایجاد حساب')),
+      const SizedBox(height: 16), SizedBox(width: double.infinity, child: FilledButton(onPressed: () { final value = int.tryParse(IranNumber.toEnglish(balance.text).replaceAll(RegExp(r'[^0-9]'), '')) ?? 0; Navigator.pop(context, _AccountDraft(name.text, type, currency, value, bankName.text, accountNumber.text, cardNumber.text, sheba.text)); }, child: const Text('ایجاد حساب'))),
     ]));
   }
 }

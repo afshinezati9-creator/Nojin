@@ -335,4 +335,71 @@ void main() {
     expect(debt.statusAt(DateTime.utc(2026, 1, 11)), FinanceDebtStatus.overdue);
   });
 
+  test('creates a financial goal and tracks savings progress', () async {
+    final goal = await repository.createGoal(
+      title: 'خرید لپ‌تاپ',
+      targetAmount: 10000000,
+      currency: IranCurrency.toman,
+      dueAt: DateTime.utc(2026, 12, 29),
+    );
+    expect(goal.currentAmount, 0);
+    expect(goal.statusAt(DateTime.utc(2026, 10, 1)), FinanceGoalStatus.active);
+
+    await repository.addGoalEntry(goalId: goal.id, amount: 2500000, note: 'پس‌انداز ماه اول');
+    final loaded = await repository.getGoal(goal.id);
+    expect(loaded?.currentAmount, 2500000);
+    expect(loaded?.progress, 0.25);
+    expect((await repository.listGoalEntries(goal.id)), hasLength(1));
+  });
+
+  test('completes an emergency fund and rejects over-withdrawal', () async {
+    final goal = await repository.createGoal(
+      title: 'صندوق اضطراری',
+      type: FinanceGoalType.emergencyFund,
+      targetAmount: 5000000,
+      currency: IranCurrency.toman,
+    );
+    await repository.addGoalEntry(goalId: goal.id, amount: 5000000);
+    final complete = await repository.getGoal(goal.id);
+    expect(complete?.statusAt(DateTime.utc(2026, 10, 1)), FinanceGoalStatus.completed);
+
+    expect(
+      () => repository.addGoalEntry(goalId: goal.id, amount: 5000001, isWithdrawal: true),
+      throwsA(isA<ArgumentError>()),
+    );
+    await repository.addGoalEntry(goalId: goal.id, amount: 1000000, isWithdrawal: true);
+    final afterWithdrawal = await repository.getGoal(goal.id);
+    expect(afterWithdrawal?.currentAmount, 4000000);
+  });
+
+  test('reports overdue financial goal after its due date', () async {
+    final goal = await repository.createGoal(
+      title: 'هدف قدیمی',
+      targetAmount: 1000000,
+      currency: IranCurrency.toman,
+      dueAt: DateTime.utc(2026, 1, 10),
+    );
+    expect(goal.statusAt(DateTime.utc(2026, 1, 10, 23, 59)), FinanceGoalStatus.active);
+    expect(goal.statusAt(DateTime.utc(2026, 1, 11)), FinanceGoalStatus.overdue);
+  });
+
+
+  test('deleting a goal withdrawal reverses the goal balance', () async {
+    final goal = await repository.createGoal(
+      title: 'ذخیره',
+      targetAmount: 3000000,
+      currency: IranCurrency.toman,
+    );
+    await repository.addGoalEntry(goalId: goal.id, amount: 2000000);
+    final withdrawal = await repository.addGoalEntry(
+      goalId: goal.id,
+      amount: 500000,
+      isWithdrawal: true,
+    );
+    expect((await repository.getGoal(goal.id))?.currentAmount, 1500000);
+    await repository.deleteGoalEntry(withdrawal.id);
+    expect((await repository.getGoal(goal.id))?.currentAmount, 2000000);
+  });
+
+
 }

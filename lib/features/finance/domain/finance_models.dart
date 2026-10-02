@@ -238,3 +238,81 @@ class FinanceDebtPayment {
   final DateTime paidAt;
   final String note;
 }
+
+
+enum FinanceGoalType { goal, emergencyFund }
+
+extension FinanceGoalTypeX on FinanceGoalType {
+  String get label => this == FinanceGoalType.emergencyFund ? 'صندوق اضطراری' : 'هدف مالی';
+  static FinanceGoalType fromKey(String value) => FinanceGoalType.values.firstWhere(
+    (item) => item.name == value,
+    orElse: () => FinanceGoalType.goal,
+  );
+}
+
+enum FinanceGoalStatus { active, completed, overdue }
+
+extension FinanceGoalStatusX on FinanceGoalStatus {
+  String get label => switch (this) {
+    FinanceGoalStatus.active => 'در حال پیشرفت',
+    FinanceGoalStatus.completed => 'تکمیل‌شده',
+    FinanceGoalStatus.overdue => 'مهلت گذشته',
+  };
+}
+
+class FinanceGoal {
+  const FinanceGoal({
+    required this.id,
+    required this.title,
+    required this.type,
+    required this.targetAmount,
+    required this.currentAmount,
+    required this.currency,
+    required this.dueAt,
+    required this.note,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  final String id;
+  final String title;
+  final FinanceGoalType type;
+  final int targetAmount;
+  final int currentAmount;
+  final IranCurrency currency;
+  final DateTime? dueAt;
+  final String note;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  int get remainingAmount => (targetAmount - currentAmount).clamp(0, targetAmount).toInt();
+  double get progress => targetAmount <= 0 ? 0.0 : (currentAmount / targetAmount).clamp(0.0, 1.0).toDouble();
+
+  FinanceGoalStatus statusAt(DateTime now) {
+    if (currentAmount >= targetAmount) return FinanceGoalStatus.completed;
+    if (dueAt != null) {
+      final today = DateTime.utc(now.year, now.month, now.day);
+      final due = DateTime.utc(dueAt!.year, dueAt!.month, dueAt!.day);
+      if (today.isAfter(due)) return FinanceGoalStatus.overdue;
+    }
+    return FinanceGoalStatus.active;
+  }
+}
+
+class FinanceGoalEntry {
+  const FinanceGoalEntry({
+    required this.id,
+    required this.goalId,
+    required this.amount,
+    required this.isWithdrawal,
+    required this.occurredAt,
+    required this.note,
+  });
+
+  final String id;
+  final String goalId;
+  final int amount;
+  final bool isWithdrawal;
+  final DateTime occurredAt;
+  final String note;
+}

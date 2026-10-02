@@ -16,7 +16,7 @@ void main() {
 
   tearDown(() => database.close());
 
-  test('creates version 4 schema and indexes', () async {
+  test('creates version 6 schema and indexes', () async {
     expect(await database.schemaVersion(), 5);
     expect(await database.isHealthy(), isTrue);
 
@@ -37,6 +37,8 @@ void main() {
         'info_items',
         'nojin_meta',
         'note_media',
+        'finance_goals',
+        'finance_goal_entries',
       ]),
     );
 
@@ -46,7 +48,7 @@ void main() {
       [],
     );
 
-    expect(indexes.length, 18);
+    expect(indexes.length, 20);
   });
 
   test('settings repository persists and updates values', () async {
@@ -172,6 +174,31 @@ void main() {
     expect(tables.map((row) => row['name']).toList(), containsAll(<Object?>['finance_debts','finance_debt_payments']));
     await upgraded.close();
   });
+
+  test('migrates version 5 database to goals schema', () async {
+    final raw = NativeDatabase.memory();
+    await raw.runCustom('CREATE TABLE nojin_meta (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL)');
+    await raw.runCustom(
+      'CREATE TABLE finance_debts (id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, person_name TEXT NOT NULL, debt_type TEXT NOT NULL, total_amount INTEGER NOT NULL, settled_amount INTEGER NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT "toman", due_at INTEGER, note TEXT NOT NULL DEFAULT "", created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
+    );
+    await raw.runCustom(
+      'CREATE TABLE finance_debt_payments (id TEXT NOT NULL PRIMARY KEY, debt_id TEXT NOT NULL, amount INTEGER NOT NULL, account_id TEXT NOT NULL, transaction_id TEXT NOT NULL, paid_at INTEGER NOT NULL, note TEXT NOT NULL DEFAULT "")',
+    );
+    await raw.runCustom('INSERT INTO nojin_meta(key, value) VALUES (?, ?)', ['schema_version', '5']);
+
+    final upgraded = await NojinDatabase.fromConnection(DatabaseConnection.fromExecutor(raw));
+    expect(await upgraded.schemaVersion(), 6);
+    final tables = await upgraded.connection.runSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'finance_goal%' ORDER BY name",
+      [],
+    );
+    expect(
+      tables.map((row) => row['name']).toList(),
+      containsAll(<Object?>['finance_goals', 'finance_goal_entries']),
+    );
+    await upgraded.close();
+  });
+
 
 }
 
