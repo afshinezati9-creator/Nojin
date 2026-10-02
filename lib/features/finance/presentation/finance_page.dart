@@ -117,7 +117,7 @@ class _AccountFormState extends State<_AccountForm> {
         TextField(controller: cardNumber, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'شماره کارت ۱۶ رقمی')), const SizedBox(height: 10),
         TextField(controller: sheba, decoration: const InputDecoration(labelText: 'شماره شبا', hintText: 'IR...')),
       ],
-      const SizedBox(height: 16), SizedBox(width: double.infinity, child: FilledButton(onPressed: () { final value = int.tryParse(IranNumber.toEnglish(balance.text).replaceAll(RegExp(r'[^0-9]'), '')) ?? 0; Navigator.pop(context, _AccountDraft(name.text, type, currency, value, bankName.text, accountNumber.text, cardNumber.text, sheba.text)); }, child: const Text('ایجاد حساب')),
+      const SizedBox(height: 16), SizedBox(width: double.infinity, child: FilledButton(onPressed: () { final value = int.tryParse(IranNumber.toEnglish(balance.text).replaceAll(RegExp(r'[^0-9]'), '')) ?? 0; Navigator.pop(context, _AccountDraft(name.text, type, currency, value, bankName.text, accountNumber.text, cardNumber.text, sheba.text)); }, child: const Text('ایجاد حساب'))),
     ]));
   }
 }
