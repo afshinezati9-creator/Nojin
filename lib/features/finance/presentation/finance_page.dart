@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/icons/nojin_icon_button.dart';
+import '../../../core/icons/nojin_icons.dart';
 import '../../../core/iran/iran_money.dart';
 import '../../../core/iran/iran_number.dart';
 import '../../../core/layout/nojin_breakpoints.dart';
 import '../../../core/theme/nojin_tokens.dart';
-import '../../../core/icons/nojin_icons.dart';
-import '../../../core/icons/nojin_icon_button.dart';
 import '../application/finance_state.dart';
 import '../domain/finance_models.dart';
 
@@ -31,7 +31,7 @@ class _FinanceBody extends ConsumerWidget {
     final total = accounts.fold<int>(0, (s, a) => s + a.balance);
     final width = MediaQuery.sizeOf(context).width;
     return Center(child: ConstrainedBox(constraints: BoxConstraints(maxWidth: NojinBreakpoints.contentMaxWidth(width)), child: ListView(padding: NojinBreakpoints.pagePadding(width), children: [
-      Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(gradient: NojinGradients.primary, borderRadius: BorderRadius.circular(NojinRadii.lg)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('موجودی کل', style: TextStyle(color: Colors.white70)), const SizedBox(height: 8), Text(IranMoney.format(total), style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)), const Text('تومان', style: TextStyle(color: Colors.white70))])),
+      Container(padding: const EdgeInsets.all(24), decoration: BoxDecoration(gradient: NojinGradients.primary, borderRadius: BorderRadius.circular(NojinRadii.lg)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('موجودی کل', style: TextStyle(color: Colors.white70)), const SizedBox(height: 8), Text(IranMoney(total).display, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900)), const Text('تومان', style: TextStyle(color: Colors.white70))])),
       const SizedBox(height: 24), Row(children: [const Expanded(child: Text('حساب‌ها', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800))), Text(IranNumber.format(accounts.length) + ' حساب', style: const TextStyle(color: NojinColors.text2))]),
       const SizedBox(height: 12), if (accounts.isEmpty) _Empty(onAdd: onAdd) else ...accounts.map((a) => _AccountCard(account: a)),
     ])));
@@ -45,7 +45,7 @@ class _AccountCard extends ConsumerWidget {
     return Card(margin: const EdgeInsets.only(bottom: 12), child: InkWell(borderRadius: BorderRadius.circular(NojinRadii.lg), onTap: () => _details(context, ref), child: Padding(padding: const EdgeInsets.all(16), child: Row(children: [
       Container(width: 48, height: 48, decoration: const BoxDecoration(gradient: NojinGradients.soft, shape: BoxShape.circle), child: const Icon(Icons.account_balance_wallet_outlined, color: NojinColors.indigo)),
       const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(account.name, style: const TextStyle(fontWeight: FontWeight.w700)), const SizedBox(height: 4), Text(account.type.label, style: const TextStyle(color: NojinColors.text3, fontSize: 12))])),
-      Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Text(IranMoney.format(account.balance), style: const TextStyle(fontWeight: FontWeight.w800)), tx.when(data: (v) => Text(IranNumber.format(v.length) + ' تراکنش', style: const TextStyle(color: NojinColors.text3, fontSize: 11)), loading: () => const SizedBox(height: 16), error: (_, __) => const SizedBox.shrink())]), const Icon(Icons.chevron_left, color: NojinColors.text3)]))));
+      Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Text(IranMoney(account.balance).display, style: const TextStyle(fontWeight: FontWeight.w800)), tx.when(data: (v) => Text(IranNumber.format(v.length) + ' تراکنش', style: const TextStyle(color: NojinColors.text3, fontSize: 11)), loading: () => const SizedBox(height: 16), error: (_, __) => const SizedBox.shrink())]), const Icon(Icons.chevron_left, color: NojinColors.text3)]))));
   }
   Future<void> _details(BuildContext context, WidgetRef ref) => showModalBottomSheet<void>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => _Details(account: account));
 }
