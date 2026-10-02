@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../../core/icons/nojin_icons.dart';
 import '../../../core/iran/iran_date.dart';
 import '../../../core/layout/nojin_breakpoints.dart';
@@ -707,6 +708,100 @@ class _BlockEditor extends StatefulWidget {
   State<_BlockEditor> createState() => _BlockEditorState();
 }
 
+class _MediaBlockPreview extends StatefulWidget {
+  const _MediaBlockPreview({
+    required this.type,
+    required this.fileName,
+    required this.mimeType,
+    required this.bytes,
+    required this.sizeBytes,
+  });
+
+  final RichBlockType type;
+  final String fileName;
+  final String mimeType;
+  final Uint8List bytes;
+  final int sizeBytes;
+
+  @override
+  State<_MediaBlockPreview> createState() => _MediaBlockPreviewState();
+}
+
+class _MediaBlockPreviewState extends State<_MediaBlockPreview> {
+  AudioPlayer? _player;
+  bool _playing = false;
+
+  @override
+  void dispose() {
+    _player?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggleAudio() async {
+    final player = _player ??= AudioPlayer();
+    if (_playing) {
+      await player.pause();
+      if (mounted) setState(() => _playing = false);
+      return;
+    }
+    await player.play(BytesSource(widget.bytes, mimeType: widget.mimeType));
+    if (mounted) setState(() => _playing = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.type == RichBlockType.image) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(NojinRadii.md),
+        child: Image.memory(widget.bytes, fit: BoxFit.cover, width: double.infinity, height: 220),
+      );
+    }
+
+    final icon = switch (widget.type) {
+      RichBlockType.video => Icons.movie_outlined,
+      RichBlockType.audio => Icons.mic_none,
+      _ => Icons.insert_drive_file_outlined,
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: NojinColors.background,
+        borderRadius: BorderRadius.circular(NojinRadii.md),
+        border: Border.all(color: NojinColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: NojinColors.indigo),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.fileName, maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 3),
+                Text(MediaFormat.size(widget.sizeBytes), style: const TextStyle(color: NojinColors.text3, fontSize: 11)),
+              ],
+            ),
+          ),
+          if (widget.type == RichBlockType.audio)
+            IconButton(
+              tooltip: _playing ? 'توقف' : 'پخش',
+              onPressed: _toggleAudio,
+              icon: NojinIcon(
+                _playing ? NojinIconName.close : NojinIconName.sparkle,
+                size: 18,
+                color: NojinColors.indigo,
+              ),
+            ),
+          if (widget.type == RichBlockType.video)
+            const Text('ویدئو', style: TextStyle(color: NojinColors.text3, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+}
+
 class _BlockEditorState extends State<_BlockEditor> {
   late final TextEditingController _controller;
 
@@ -733,6 +828,52 @@ class _BlockEditorState extends State<_BlockEditor> {
   @override
   Widget build(BuildContext context) {
     final block = widget.block;
+    if (const [
+      RichBlockType.image,
+      RichBlockType.video,
+      RichBlockType.audio,
+      RichBlockType.file,
+    ].contains(block.type)) {
+      final pending = widget.pendingMedia.where((item) => item.tempId == block.mediaId).cast<MediaDraft?>().firstOrNull;
+      if (pending != null) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _MediaBlockPreview(
+            type: block.type,
+            fileName: pending.fileName,
+            mimeType: pending.mimeType,
+            bytes: pending.bytes,
+            sizeBytes: pending.bytes.length,
+          ),
+        );
+      }
+      return FutureBuilder<MediaAttachment?>(
+        future: block.mediaId == null ? Future.value(null) : widget.mediaRepository.getById(block.mediaId!),
+        builder: (context, snapshot) {
+          final media = snapshot.data;
+          if (media == null) {
+            return const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: Icon(Icons.broken_image_outlined),
+                title: Text('رسانه پیدا نشد'),
+              ),
+            );
+          }
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _MediaBlockPreview(
+              type: block.type,
+              fileName: media.fileName,
+              mimeType: media.mimeType,
+              bytes: media.bytes,
+              sizeBytes: media.sizeBytes,
+            ),
+          );
+        },
+      );
+    }
+
     if (block.type == RichBlockType.divider) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -849,6 +990,11 @@ class _BlockEditorState extends State<_BlockEditor> {
               child: Align(alignment: AlignmentDirectional.centerStart, child: Text('محتوای بازشونده در فازهای بعدی قابل توسعه است.')),
             ),
         ]);
+      case RichBlockType.image:
+      case RichBlockType.video:
+      case RichBlockType.audio:
+      case RichBlockType.file:
+        editor = const SizedBox.shrink();
       case RichBlockType.text:
         editor = TextField(
           controller: _controller,
