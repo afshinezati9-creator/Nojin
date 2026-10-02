@@ -24,6 +24,12 @@ class SettingsRepository {
         );
   }
 
+  Future<List<AppSetting>> readAll() {
+    return (_database.select(_database.appSettings)
+          ..orderBy([(table) => OrderingTerm.asc(table.key)]))
+        .get();
+  }
+
   Future<void> delete(String key) {
     return (_database.delete(_database.appSettings)
           ..where((table) => table.key.equals(key)))
