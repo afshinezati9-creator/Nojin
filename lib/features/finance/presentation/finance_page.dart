@@ -19,7 +19,7 @@ class FinancePage extends ConsumerWidget {
     final state = ref.watch(financeAccountsProvider);
     return Scaffold(appBar: AppBar(title: const Text('مالی'), actions: [NojinIconButton(icon: NojinIconName.add, tooltip: 'حساب جدید', onPressed: () => _accountForm(context, ref)), const SizedBox(width: 8)]),
       body: state.when(loading: () => const Center(child: CircularProgressIndicator()), error: (e, _) => Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text('بارگذاری مالی انجام نشد'), Text(e.toString()), OutlinedButton(onPressed: () => ref.read(financeAccountsProvider.notifier).refresh(), child: const Text('تلاش دوباره'))])),
-        data: (accounts) => _FinanceBody(accounts: accounts, onAdd: () => _accountForm(context, ref)));
+        data: (accounts) => _FinanceBody(accounts: accounts, onAdd: () => _accountForm(context, ref))));
   }
   Future<void> _accountForm(BuildContext context, WidgetRef ref) async {
     final d = await showModalBottomSheet<_AccountDraft>(context: context, isScrollControlled: true, useSafeArea: true, builder: (_) => const _AccountForm());
