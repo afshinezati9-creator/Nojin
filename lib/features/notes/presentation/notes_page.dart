@@ -834,7 +834,10 @@ class _BlockEditorState extends State<_BlockEditor> {
       RichBlockType.audio,
       RichBlockType.file,
     ].contains(block.type)) {
-      final pending = widget.pendingMedia.where((item) => item.tempId == block.mediaId).cast<MediaDraft?>().firstOrNull;
+      MediaDraft? pending;
+      for (final item in widget.pendingMedia) {
+        if (item.tempId == block.mediaId) { pending = item; break; }
+      }
       if (pending != null) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
