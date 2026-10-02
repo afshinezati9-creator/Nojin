@@ -64,6 +64,13 @@ class NojinDatabase {
             await tx.runCustom('ALTER TABLE finance_accounts ADD COLUMN card_number TEXT');
             await tx.runCustom('ALTER TABLE finance_accounts ADD COLUMN sheba TEXT');
             break;
+          case 4:
+            await tx.runCustom('CREATE TABLE finance_installment_plans (id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, total_amount INTEGER NOT NULL, installment_amount INTEGER NOT NULL, installment_count INTEGER NOT NULL, currency TEXT NOT NULL DEFAULT "toman", first_due_at INTEGER NOT NULL, interval_months INTEGER NOT NULL DEFAULT 1, note TEXT NOT NULL DEFAULT "", created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)');
+            await tx.runCustom('CREATE TABLE finance_installments (id TEXT NOT NULL PRIMARY KEY, plan_id TEXT NOT NULL, sequence INTEGER NOT NULL, due_at INTEGER NOT NULL, amount INTEGER NOT NULL, paid_at INTEGER, transaction_id TEXT)');
+            await tx.runCustom('CREATE INDEX finance_installment_plans_due_idx ON finance_installment_plans(first_due_at)');
+            await tx.runCustom('CREATE INDEX finance_installments_plan_due_idx ON finance_installments(plan_id, due_at)');
+            await tx.runCustom('CREATE INDEX finance_installments_status_idx ON finance_installments(paid_at, due_at)');
+            break;
           default:
             throw StateError('Missing migration for database version ' + version.toString() + '.');
         }
