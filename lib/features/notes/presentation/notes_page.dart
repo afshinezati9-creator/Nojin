@@ -72,7 +72,7 @@ class _NotesPageState extends ConsumerState<NotesPage> {
     }
 
     final mediaIds = <String, String>{};
-    for (final pending in draft.pendingMedia) {
+    for (final pending in draft.pendingMedia.where((item) => draft.content.contains(item.tempId))) {
       final attachment = await mediaRepository.add(
         noteId: saved.id,
         type: pending.type,
