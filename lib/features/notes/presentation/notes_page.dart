@@ -1,7 +1,8 @@
 import 'dart:async';
-import 'package:flutter/services.dart';
 import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../../../core/icons/nojin_icons.dart';
@@ -1032,5 +1033,9 @@ class _BlockEditorState extends State<_BlockEditor> {
     RichBlockType.date => '',
     RichBlockType.toggle => 'عنوان بازشونده...',
     RichBlockType.divider => '',
+    RichBlockType.image => '',
+    RichBlockType.video => '',
+    RichBlockType.audio => '',
+    RichBlockType.file => '',
   };
 }
