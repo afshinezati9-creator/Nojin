@@ -7,6 +7,7 @@ class RichBlock {
     required this.id,
     required this.type,
     this.text = '',
+    this.mediaId,
     this.checked = false,
     this.expanded = true,
   });
@@ -14,6 +15,7 @@ class RichBlock {
   final String id;
   final RichBlockType type;
   final String text;
+  final String? mediaId;
   final bool checked;
   final bool expanded;
 
