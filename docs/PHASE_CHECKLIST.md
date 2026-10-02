@@ -1,6 +1,6 @@
 # NOJÎN — Phase Checklist
 
-آخرین وضعیت: **Phase 08 — State Architecture**
+آخرین وضعیت: **Phase 09 — Notes Foundation**
 
 ## Completed
 
@@ -17,7 +17,7 @@
 ## Remaining
 
 ### Notes
-- [ ] Phase 09 — Notes Foundation
+- [x] Phase 09 — Notes Foundation
 - [ ] Phase 10 — Rich Editor
 - [ ] Phase 11 — Media Engine
 
