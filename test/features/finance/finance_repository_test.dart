@@ -2,9 +2,9 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nojin/core/database/nojin_database.dart';
+import 'package:nojin/core/iran/iran_money.dart';
 import 'package:nojin/features/finance/data/finance_repository.dart';
 import 'package:nojin/features/finance/domain/finance_models.dart';
-import 'package:nojin/core/iran/iran_money.dart';
 
 void main() {
   late NojinDatabase database;
