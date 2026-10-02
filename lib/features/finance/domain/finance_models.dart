@@ -154,3 +154,87 @@ class FinanceInstallment {
     return today.isAfter(dueDate) ? InstallmentStatus.overdue : InstallmentStatus.pending;
   }
 }
+
+
+
+enum FinanceDebtType { receivable, payable }
+
+extension FinanceDebtTypeX on FinanceDebtType {
+  String get key => name;
+  String get label => this == FinanceDebtType.receivable ? 'طلب از دیگران' : 'بدهی به دیگران';
+  static FinanceDebtType fromKey(String value) => FinanceDebtType.values.firstWhere(
+    (item) => item.name == value,
+    orElse: () => FinanceDebtType.payable,
+  );
+}
+
+enum FinanceDebtStatus { open, partial, settled, overdue }
+
+extension FinanceDebtStatusX on FinanceDebtStatus {
+  String get label => switch (this) {
+    FinanceDebtStatus.open => 'باز',
+    FinanceDebtStatus.partial => 'بخشی پرداخت‌شده',
+    FinanceDebtStatus.settled => 'تسویه‌شده',
+    FinanceDebtStatus.overdue => 'سررسید گذشته',
+  };
+}
+
+class FinanceDebt {
+  const FinanceDebt({
+    required this.id,
+    required this.title,
+    required this.personName,
+    required this.type,
+    required this.totalAmount,
+    required this.settledAmount,
+    required this.currency,
+    required this.dueAt,
+    required this.note,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  final String id;
+  final String title;
+  final String personName;
+  final FinanceDebtType type;
+  final int totalAmount;
+  final int settledAmount;
+  final IranCurrency currency;
+  final DateTime? dueAt;
+  final String note;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  int get remainingAmount => totalAmount - settledAmount;
+
+  FinanceDebtStatus statusAt(DateTime now) {
+    if (remainingAmount <= 0) return FinanceDebtStatus.settled;
+    if (dueAt != null) {
+      final today = DateTime.utc(now.year, now.month, now.day);
+      final due = DateTime.utc(dueAt!.year, dueAt!.month, dueAt!.day);
+      if (today.isAfter(due)) return FinanceDebtStatus.overdue;
+    }
+    return settledAmount > 0 ? FinanceDebtStatus.partial : FinanceDebtStatus.open;
+  }
+}
+
+class FinanceDebtPayment {
+  const FinanceDebtPayment({
+    required this.id,
+    required this.debtId,
+    required this.amount,
+    required this.accountId,
+    required this.transactionId,
+    required this.paidAt,
+    required this.note,
+  });
+
+  final String id;
+  final String debtId;
+  final int amount;
+  final String accountId;
+  final String transactionId;
+  final DateTime paidAt;
+  final String note;
+}

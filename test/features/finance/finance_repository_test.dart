@@ -252,4 +252,87 @@ void main() {
     );
   });
 
+  test('creates a receivable and settles it as income', () async {
+    final account = await repository.createAccount(
+      name: 'حساب دریافت',
+      type: FinanceAccountType.bank,
+      openingBalance: 100000,
+    );
+    final debt = await repository.createDebt(
+      title: 'طلب فروش',
+      personName: 'مشتری',
+      type: FinanceDebtType.receivable,
+      totalAmount: 300000,
+      currency: IranCurrency.toman,
+      dueAt: DateTime.utc(2026, 10, 10),
+    );
+    await repository.settleDebt(debtId: debt.id, accountId: account.id, amount: 100000);
+    final updated = await repository.getDebt(debt.id);
+    expect(updated?.settledAmount, 100000);
+    expect(updated?.remainingAmount, 200000);
+    expect((await repository.getAccount(account.id))?.balance, 200000);
+    final tx = await repository.listTransactions(account.id);
+    expect(tx.single.type, FinanceTransactionType.income);
+    expect(tx.single.amount, 100000);
+    expect((await repository.listDebtPayments(debt.id)), hasLength(1));
+  });
+
+  test('partially settles a payable as expense and then settles the remainder', () async {
+    final account = await repository.createAccount(
+      name: 'حساب بدهی',
+      type: FinanceAccountType.bank,
+      openingBalance: 500000,
+    );
+    final debt = await repository.createDebt(
+      title: 'خرید نسیه',
+      personName: 'فروشنده',
+      type: FinanceDebtType.payable,
+      totalAmount: 300000,
+      currency: IranCurrency.toman,
+    );
+    await repository.settleDebt(debtId: debt.id, accountId: account.id, amount: 120000);
+    await repository.settleDebt(debtId: debt.id, accountId: account.id, amount: 180000);
+    final updated = await repository.getDebt(debt.id);
+    expect(updated?.statusAt(DateTime.utc(2026, 10, 1)), FinanceDebtStatus.settled);
+    expect((await repository.getAccount(account.id))?.balance, 200000);
+    final tx = await repository.listTransactions(account.id);
+    expect(tx, hasLength(2));
+    expect(tx.every((item) => item.type == FinanceTransactionType.expense), isTrue);
+  });
+
+  test('rejects debt settlement with mismatched currency', () async {
+    final account = await repository.createAccount(
+      name: 'حساب ریالی',
+      type: FinanceAccountType.bank,
+      currency: IranCurrency.rial,
+      openingBalance: 1000000,
+    );
+    final debt = await repository.createDebt(
+      title: 'طلب تومانی',
+      personName: 'شخص',
+      type: FinanceDebtType.receivable,
+      totalAmount: 100000,
+      currency: IranCurrency.toman,
+    );
+    final payment = () => repository.settleDebt(
+      debtId: debt.id,
+      accountId: account.id,
+      amount: 100000,
+    );
+    expect(payment, throwsA(isA<ArgumentError>()));
+  });
+
+  test('reports an overdue debt after its due day', () async {
+    final debt = await repository.createDebt(
+      title: 'بدهی قدیمی',
+      personName: 'شخص',
+      type: FinanceDebtType.payable,
+      totalAmount: 100000,
+      currency: IranCurrency.toman,
+      dueAt: DateTime.utc(2026, 1, 10),
+    );
+    expect(debt.statusAt(DateTime.utc(2026, 1, 10, 23, 59)), FinanceDebtStatus.open);
+    expect(debt.statusAt(DateTime.utc(2026, 1, 11)), FinanceDebtStatus.overdue);
+  });
+
 }
