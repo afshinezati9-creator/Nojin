@@ -16,8 +16,8 @@ void main() {
 
   tearDown(() => database.close());
 
-  test('creates version 1 schema and indexes', () async {
-    expect(await database.schemaVersion(), 1);
+  test('creates version 2 schema and indexes', () async {
+    expect(await database.schemaVersion(), 2);
     expect(await database.isHealthy(), isTrue);
 
     final tables = await database.connection.runSelect(
@@ -36,6 +36,7 @@ void main() {
         'planning_items',
         'info_items',
         'nojin_meta',
+        'note_media',
       ]),
     );
 
@@ -45,7 +46,7 @@ void main() {
       [],
     );
 
-    expect(indexes.length, 11);
+    expect(indexes.length, 12);
   });
 
   test('settings repository persists and updates values', () async {
