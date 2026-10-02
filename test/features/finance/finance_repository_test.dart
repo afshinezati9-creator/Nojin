@@ -68,8 +68,6 @@ void main() {
     await repository.deleteTransaction(tx.id);
     expect((await repository.getAccount(account.id))?.balance, 0);
   });
-}
-
 
   test('stores and validates Iranian bank details', () async {
     final account = await repository.createAccount(
