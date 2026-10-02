@@ -29,9 +29,6 @@ class NojinDatabase {
   }
 
   Future<void> _initialize() async {
-    await connection.runCustom('PRAGMA foreign_keys = ON');
-    await connection.runCustom('PRAGMA journal_mode = WAL');
-    await connection.runCustom('PRAGMA synchronous = NORMAL');
     await connection.runCustom(
       'CREATE TABLE IF NOT EXISTS nojin_meta (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL)',
     );
