@@ -121,3 +121,4 @@ void main() {
       DatabaseConnection.fromExecutor(NativeDatabase.memory()),
     );
   });
+}
