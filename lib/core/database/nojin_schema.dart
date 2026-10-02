@@ -1,5 +1,5 @@
 abstract final class NojinSchema {
-  static const version = 3;
+  static const version = 4;
   static const createStatements = <String>[
     'CREATE TABLE app_settings (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)',
     'CREATE TABLE notes (id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, content TEXT NOT NULL DEFAULT "", category TEXT NOT NULL DEFAULT "general", is_pinned INTEGER NOT NULL DEFAULT 0, is_archived INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
@@ -8,6 +8,11 @@ abstract final class NojinSchema {
     'CREATE TABLE planning_items (id TEXT NOT NULL PRIMARY KEY, item_type TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL DEFAULT "active", scheduled_at INTEGER, due_at INTEGER, progress REAL NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
     'CREATE TABLE info_items (id TEXT NOT NULL PRIMARY KEY, item_type TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL DEFAULT "", is_pinned INTEGER NOT NULL DEFAULT 0, usage_count INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
     'CREATE TABLE note_media (id TEXT NOT NULL PRIMARY KEY, note_id TEXT NOT NULL, media_type TEXT NOT NULL, file_name TEXT NOT NULL, mime_type TEXT NOT NULL, bytes BLOB NOT NULL, size_bytes INTEGER NOT NULL, duration_ms INTEGER, created_at INTEGER NOT NULL)',
+    'CREATE TABLE finance_installment_plans (id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, total_amount INTEGER NOT NULL, installment_amount INTEGER NOT NULL, installment_count INTEGER NOT NULL, currency TEXT NOT NULL DEFAULT "toman", first_due_at INTEGER NOT NULL, interval_months INTEGER NOT NULL DEFAULT 1, note TEXT NOT NULL DEFAULT "", created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
+    'CREATE TABLE finance_installments (id TEXT NOT NULL PRIMARY KEY, plan_id TEXT NOT NULL, sequence INTEGER NOT NULL, due_at INTEGER NOT NULL, amount INTEGER NOT NULL, paid_at INTEGER, transaction_id TEXT)',
+    'CREATE INDEX finance_installment_plans_due_idx ON finance_installment_plans(first_due_at)',
+    'CREATE INDEX finance_installments_plan_due_idx ON finance_installments(plan_id, due_at)',
+    'CREATE INDEX finance_installments_status_idx ON finance_installments(paid_at, due_at)',
     'CREATE INDEX note_media_note_idx ON note_media(note_id, created_at)',
     'CREATE INDEX notes_updated_at_idx ON notes(updated_at)',
     'CREATE INDEX notes_category_idx ON notes(category)',
@@ -21,5 +26,5 @@ abstract final class NojinSchema {
     'CREATE INDEX info_items_usage_idx ON info_items(usage_count)',
     'CREATE INDEX info_items_updated_at_idx ON info_items(updated_at)',
   ];
-  static const tableNames = <String>['app_settings','notes','finance_accounts','finance_transactions','planning_items','info_items','note_media'];
+  static const tableNames = <String>['app_settings','notes','finance_accounts','finance_transactions','planning_items','info_items','note_media','finance_installment_plans','finance_installments'];
 }
