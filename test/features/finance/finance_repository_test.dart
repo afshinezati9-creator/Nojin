@@ -117,4 +117,63 @@ void main() {
     expect(IranMoney(account.balance, currency: account.currency).unit, 'ریال');
   });
 
+  test('builds dashboard aggregates from active accounts', () async {
+    final toman = await repository.createAccount(
+      name: 'حساب اصلی',
+      type: FinanceAccountType.bank,
+      openingBalance: 5000000,
+    );
+    final rial = await repository.createAccount(
+      name: 'حساب ریالی',
+      type: FinanceAccountType.bank,
+      currency: IranCurrency.rial,
+    );
+    await repository.addTransaction(
+      accountId: toman.id,
+      title: 'حقوق',
+      amount: 10000000,
+      type: FinanceTransactionType.income,
+    );
+    await repository.addTransaction(
+      accountId: toman.id,
+      title: 'اجاره',
+      amount: 3000000,
+      type: FinanceTransactionType.expense,
+    );
+    await repository.addTransaction(
+      accountId: rial.id,
+      title: 'درآمد ریالی',
+      amount: 2000000,
+      type: FinanceTransactionType.income,
+    );
+
+    final summary = await repository.dashboardSummary();
+    expect(summary.tomanIncome, 10000000);
+    expect(summary.tomanExpense, 3000000);
+    expect(summary.tomanNet, 7000000);
+    expect(summary.rialIncome, 2000000);
+    expect(summary.rialExpense, 0);
+    expect(summary.recent, hasLength(3));
+    expect(summary.topExpenses.first.title, 'اجاره');
+    expect(summary.topExpenses.first.total, 3000000);
+  });
+
+  test('dashboard excludes archived accounts', () async {
+    final account = await repository.createAccount(
+      name: 'قدیمی',
+      type: FinanceAccountType.cash,
+    );
+    await repository.addTransaction(
+      accountId: account.id,
+      title: 'هزینه قدیمی',
+      amount: 900000,
+      type: FinanceTransactionType.expense,
+    );
+    await repository.archiveAccount(account.id, archived: true);
+
+    final summary = await repository.dashboardSummary();
+    expect(summary.tomanExpense, 0);
+    expect(summary.recent, isEmpty);
+  });
+
 }
