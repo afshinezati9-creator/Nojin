@@ -11,10 +11,7 @@ final settingsStateProvider =
 class SettingsStateNotifier extends AsyncNotifier<Map<String, String>> {
   Future<Map<String, String>> _readAll() async {
     final repository = await ref.read(settingsRepositoryProvider.future);
-    final rows = await repository.readAll();
-    return {
-      for (final row in rows) row.key: row.value,
-    };
+    return repository.readAll();
   }
 
   @override
