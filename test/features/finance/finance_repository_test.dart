@@ -118,3 +118,5 @@ void main() {
     expect(account.currency, IranCurrency.rial);
     expect(IranMoney(account.balance, currency: account.currency).unit, 'ریال');
   });
+
+}
