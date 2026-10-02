@@ -202,7 +202,7 @@ class _Toolbar extends StatelessWidget {
       builder: (c) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
         const ListTile(title: Text('مرتب‌سازی')),
         ListTile(title: const Text('آخرین تغییر'), onTap: () { Navigator.pop(c); onSort(NoteSort.updatedDesc); }),
-        ListTile(title: const Text('قدیمی'), onTap: () { Navigator.pop(c); onSort(NoteSort.createdDesc); }),
+        ListTile(title: const Text('قدیمی'), onTap: () { Navigator.pop(c); onSort(NoteSort.createdAsc); }),
         ListTile(title: const Text('سنجاق'), onTap: () { Navigator.pop(c); onSort(NoteSort.pinnedFirst); }),
         const SizedBox(height: 10),
       ])),
@@ -211,7 +211,7 @@ class _Toolbar extends StatelessWidget {
 
   static String _sortLabel(NoteSort s) => switch (s) {
     NoteSort.updatedDesc => 'جدید',
-    NoteSort.createdDesc => 'قدیمی',
+    NoteSort.createdAsc => 'قدیمی',
     NoteSort.pinnedFirst => 'سنجاق',
   };
 }
