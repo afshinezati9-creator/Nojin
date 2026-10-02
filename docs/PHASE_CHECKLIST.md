@@ -1,6 +1,6 @@
 # NOJÎN — Phase Checklist
 
-آخرین وضعیت: **Phase 11 — Media Engine**
+آخرین وضعیت: **Phase 12 — Finance Foundation**
 
 ## Completed
 
@@ -22,7 +22,7 @@
 - [x] Phase 11 — Media Engine
 
 ### Finance
-- [ ] Phase 12 — Finance Foundation
+- [x] Phase 12 — Finance Foundation
 - [ ] Phase 13 — Iranian Finance
 - [ ] Phase 14 — Finance Dashboard
 - [ ] Phase 15 — Installments
