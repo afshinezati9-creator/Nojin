@@ -22,6 +22,12 @@ class NojinDatabase {
     return database;
   }
 
+  static Future<NojinDatabase> fromConnection(DatabaseConnection connection) async {
+    final database = NojinDatabase._(connection);
+    await database._initialize();
+    return database;
+  }
+
   Future<void> _initialize() async {
     await connection.runCustom('PRAGMA foreign_keys = ON');
     await connection.runCustom('PRAGMA journal_mode = WAL');
