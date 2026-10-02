@@ -149,6 +149,8 @@ class FinanceInstallment {
 
   InstallmentStatus statusAt(DateTime now) {
     if (paidAt != null) return InstallmentStatus.paid;
-    return now.isAfter(dueAt) ? InstallmentStatus.overdue : InstallmentStatus.pending;
+    final today = DateTime.utc(now.year, now.month, now.day);
+    final dueDate = DateTime.utc(dueAt.year, dueAt.month, dueAt.day);
+    return today.isAfter(dueDate) ? InstallmentStatus.overdue : InstallmentStatus.pending;
   }
 }
