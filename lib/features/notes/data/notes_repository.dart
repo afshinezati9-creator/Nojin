@@ -114,8 +114,9 @@ class NotesRepository {
     );
   }
 
-  Future<void> delete(String id) {
-    return _database.connection.runCustom('DELETE FROM notes WHERE id = ?', [id]);
+  Future<void> delete(String id) async {
+    await _database.connection.runCustom('DELETE FROM note_media WHERE note_id = ?', [id]);
+    await _database.connection.runCustom('DELETE FROM notes WHERE id = ?', [id]);
   }
 
   Future<void> _insert(Note note) {
