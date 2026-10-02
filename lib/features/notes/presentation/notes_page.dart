@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/icons/nojin_icons.dart';
@@ -8,6 +9,12 @@ import '../../../core/layout/nojin_breakpoints.dart';
 import '../../../core/theme/nojin_tokens.dart';
 import '../application/notes_state.dart';
 import '../data/notes_repository.dart';
+import '../data/media_provider.dart';
+import '../data/media_repository.dart';
+import '../application/media_service.dart';
+import '../application/audio_recorder_service.dart';
+import '../domain/media_attachment.dart';
+import '../domain/media_format.dart';
 import '../domain/note.dart';
 import '../domain/rich_block.dart';
 import '../domain/rich_block_codec.dart';
@@ -37,22 +44,62 @@ class _NotesPageState extends ConsumerState<NotesPage> {
   }
 
   Future<void> _edit([Note? note]) async {
+    final mediaRepository = await ref.read(mediaRepositoryProvider.future);
+    if (!mounted) return;
     final draft = await showModalBottomSheet<_Draft>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _Editor(note: note),
+      builder: (_) => _Editor(note: note, mediaRepository: mediaRepository),
     );
     if (!mounted || draft == null) return;
     final n = ref.read(notesStateProvider.notifier);
+    Note saved;
     if (note == null) {
-      await n.create(title: draft.title, content: draft.content, category: draft.category);
+      saved = await n.create(
+        title: draft.title,
+        content: draft.content,
+        category: draft.category,
+      );
     } else {
-      await n.update(note.copyWith(
+      saved = note.copyWith(
         title: draft.title.trim().isEmpty ? 'یادداشت بدون عنوان' : draft.title.trim(),
         content: draft.content,
         category: draft.category,
-      ));
+      );
+    }
+
+    final mediaIds = <String, String>{};
+    for (final pending in draft.pendingMedia) {
+      final attachment = await mediaRepository.add(
+        noteId: saved.id,
+        type: pending.type,
+        fileName: pending.fileName,
+        mimeType: pending.mimeType,
+        bytes: pending.bytes,
+        durationMs: pending.durationMs,
+      );
+      mediaIds[pending.tempId] = attachment.id;
+    }
+
+    var document = RichDocument.decode(draft.content);
+    document = RichDocument(document.blocks.map((block) {
+      final mapped = block.mediaId == null ? null : mediaIds[block.mediaId!];
+      return mapped == null ? block : block.copyWith(mediaId: mapped);
+    }).toList(growable: false));
+
+    if (note != null) {
+      final previous = RichDocument.decode(note.content).blocks
+          .map((b) => b.mediaId)
+          .whereType<String>()
+          .toSet();
+      final current = document.blocks.map((b) => b.mediaId).whereType<String>().toSet();
+      for (final id in previous.difference(current)) {
+        await mediaRepository.delete(id);
+      }
+      await n.update(saved.copyWith(content: RichBlockCodec.toContent(document)));
+    } else if (draft.pendingMedia.isNotEmpty) {
+      await n.update(saved.copyWith(content: RichBlockCodec.toContent(document)));
     }
   }
 
@@ -337,15 +384,17 @@ class _Empty extends StatelessWidget {
 }
 
 class _Draft {
-  const _Draft(this.title, this.content, this.category);
+  const _Draft(this.title, this.content, this.category, this.pendingMedia);
   final String title;
   final String content;
   final NoteCategory category;
+  final List<MediaDraft> pendingMedia;
 }
 
 class _Editor extends StatefulWidget {
-  const _Editor({this.note});
+  const _Editor({this.note, required this.mediaRepository});
   final Note? note;
+  final MediaRepository mediaRepository;
   @override
   State<_Editor> createState() => _EditorState();
 }
@@ -354,6 +403,9 @@ class _EditorState extends State<_Editor> {
   late final TextEditingController title;
   late NoteCategory category;
   late List<RichBlock> blocks;
+  final List<MediaDraft> pendingMedia = [];
+  final MediaService _media = MediaService();
+  final AudioRecorderService _recorder = AudioRecorderService();
 
   @override
   void initState() {
@@ -375,6 +427,7 @@ class _EditorState extends State<_Editor> {
   @override
   void dispose() {
     title.dispose();
+    _recorder.dispose();
     super.dispose();
   }
 
@@ -409,7 +462,54 @@ class _EditorState extends State<_Editor> {
       title.text,
       RichBlockCodec.toContent(document),
       category,
+      List.unmodifiable(pendingMedia),
     ));
+  }
+
+  Future<void> _addMedia(MediaDraft? draft) async {
+    if (draft == null) return;
+    if (draft.bytes.length > MediaLimits.maxBytes) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('حجم فایل بیشتر از ۲۵ مگابایت است.')),
+        );
+      }
+      return;
+    }
+    setState(() {
+      pendingMedia.add(draft);
+      blocks.add(RichBlock(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        type: switch (draft.type) {
+          MediaType.image => RichBlockType.image,
+          MediaType.video => RichBlockType.video,
+          MediaType.audio => RichBlockType.audio,
+          MediaType.file => RichBlockType.file,
+        },
+        mediaId: draft.tempId,
+        text: draft.fileName,
+      ));
+    });
+  }
+
+  Future<void> _pickImage() => _addMedia(_media.pickImage().then((v) => v).catchError((_) => null));
+  Future<void> _pickVideo() => _addMedia(_media.pickVideo().then((v) => v).catchError((_) => null));
+  Future<void> _pickFile() => _addMedia(_media.pickFile().then((v) => v).catchError((_) => null));
+
+  Future<void> _recordAudio() async {
+    if (_recorder.isRecording) {
+      final bytes = await _recorder.stop();
+      if (bytes != null) await _addMedia(_media.fromRecordedBytes(bytes: bytes));
+      if (mounted) setState(() {});
+      return;
+    }
+    final ok = await _recorder.start();
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('دسترسی میکروفون داده نشد.')),
+      );
+    }
+    if (mounted) setState(() {});
   }
 
   @override
@@ -451,7 +551,7 @@ class _EditorState extends State<_Editor> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                _BlockToolbar(onAdd: _add),
+                _BlockToolbar(onAdd: _add, onImage: _pickImage, onVideo: _pickVideo, onFile: _pickFile, onAudio: _recordAudio, recording: _recorder.isRecording),
                 const Divider(height: 1),
                 Expanded(
                   child: ListView.builder(
@@ -468,6 +568,8 @@ class _EditorState extends State<_Editor> {
                       onDelete: () => _remove(index),
                       onUp: index == 0 ? null : () => _move(index, -1),
                       onDown: index == blocks.length - 1 ? null : () => _move(index, 1),
+                      mediaRepository: widget.mediaRepository,
+                      pendingMedia: pendingMedia,
                     ),
                   ),
                 ),
