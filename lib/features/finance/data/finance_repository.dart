@@ -114,6 +114,53 @@ class FinanceRepository {
     );
   }
 
+  Future<FinanceDashboardSummary> dashboardSummary() async {
+    final rows = await _database.connection.runSelect(
+      'SELECT a.currency, t.transaction_type, SUM(t.amount) AS total '
+      'FROM finance_transactions t JOIN finance_accounts a ON a.id = t.account_id '
+      'WHERE a.is_archived = 0 GROUP BY a.currency, t.transaction_type',
+      [],
+    );
+    var tomanIncome = 0, tomanExpense = 0, rialIncome = 0, rialExpense = 0;
+    for (final row in rows) {
+      final currency = row['currency'].toString();
+      final type = row['transaction_type'].toString();
+      final total = int.parse(row['total'].toString());
+      if (currency == IranCurrency.rial.name) {
+        if (type == FinanceTransactionType.income.name) rialIncome += total; else rialExpense += total;
+      } else {
+        if (type == FinanceTransactionType.income.name) tomanIncome += total; else tomanExpense += total;
+      }
+    }
+    final recentRows = await _database.connection.runSelect(
+      'SELECT t.*, a.name AS account_name, a.currency AS account_currency '
+      'FROM finance_transactions t JOIN finance_accounts a ON a.id = t.account_id '
+      'WHERE a.is_archived = 0 ORDER BY t.occurred_at DESC, t.created_at DESC LIMIT 8',
+      [],
+    );
+    final recent = recentRows.map((row) => FinanceDashboardTransaction(
+      transaction: _transactionFromRow(row),
+      accountName: row['account_name'].toString(),
+      currency: IranCurrency.values.firstWhere((x) => x.name == row['account_currency'].toString(), orElse: () => IranCurrency.toman),
+    )).toList(growable: false);
+    final expenseRows = await _database.connection.runSelect(
+      'SELECT t.title, t.transaction_type, a.currency, SUM(t.amount) AS total '
+      'FROM finance_transactions t JOIN finance_accounts a ON a.id = t.account_id '
+      'WHERE a.is_archived = 0 AND t.transaction_type = ? '
+      'GROUP BY t.title, t.transaction_type, a.currency ORDER BY total DESC LIMIT 6',
+      [FinanceTransactionType.expense.name],
+    );
+    final topExpenses = expenseRows.map((row) => FinanceDashboardAggregate(
+      title: row['title'].toString(), total: int.parse(row['total'].toString()),
+      currency: IranCurrency.values.firstWhere((x) => x.name == row['currency'].toString(), orElse: () => IranCurrency.toman),
+    )).toList(growable: false);
+    return FinanceDashboardSummary(
+      tomanIncome: tomanIncome, tomanExpense: tomanExpense,
+      rialIncome: rialIncome, rialExpense: rialExpense,
+      recent: recent, topExpenses: topExpenses,
+    );
+  }
+
   Future<List<FinanceTransaction>> listTransactions(String accountId) async {
     final rows = await _database.connection.runSelect(
       'SELECT * FROM finance_transactions WHERE account_id = ? ORDER BY occurred_at DESC, created_at DESC',
