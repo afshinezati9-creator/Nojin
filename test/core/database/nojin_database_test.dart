@@ -97,8 +97,6 @@ void main() {
     );
     expect(rows, isEmpty);
   });
-}
-
 
   test('migrates version 2 finance accounts with Iranian fields', () async {
     final raw = NativeDatabase.memory();
