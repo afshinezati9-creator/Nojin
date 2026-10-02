@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-enum NojinIconName { home, notes, finance, planning, info, search, sparkle }
+enum NojinIconName { home, notes, finance, planning, info, search, sparkle, add, edit, pin, archive, delete }
 
 abstract final class NojinIconAssets {
   static const _root = 'assets/icons';
@@ -14,6 +14,11 @@ abstract final class NojinIconAssets {
         NojinIconName.info => '$_root/info.svg',
         NojinIconName.search => '$_root/search.svg',
         NojinIconName.sparkle => '$_root/sparkle.svg',
+        NojinIconName.add => '$_root/add.svg',
+        NojinIconName.edit => '$_root/edit.svg',
+        NojinIconName.pin => '$_root/pin.svg',
+        NojinIconName.archive => '$_root/archive.svg',
+        NojinIconName.delete => '$_root/delete.svg',
       };
 }
 
@@ -47,5 +52,10 @@ extension NojinIconNameX on NojinIconName {
         NojinIconName.info => 'اطلاعات',
         NojinIconName.search => 'جستجو',
         NojinIconName.sparkle => 'نوژین',
+        NojinIconName.add => 'افزودن',
+        NojinIconName.edit => 'ویرایش',
+        NojinIconName.pin => 'سنجاق',
+        NojinIconName.archive => 'بایگانی',
+        NojinIconName.delete => 'حذف',
       };
 }
