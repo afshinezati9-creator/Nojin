@@ -37,8 +37,7 @@ class NotesRepository {
     final orderBy = switch (sort) {
       NoteSort.updatedDesc => 'is_pinned DESC, updated_at DESC',
       NoteSort.createdDesc => 'is_pinned DESC, created_at DESC',
-      NoteSort.titleAsc =>
-        'is_pinned DESC, title COLLATE NOCASE ASC, updated_at DESC',
+      NoteSort.pinnedFirst => 'is_pinned DESC, updated_at DESC',
     };
 
     final sql = StringBuffer(
@@ -162,4 +161,4 @@ class NotesRepository {
   }
 }
 
-enum NoteSort { updatedDesc, createdDesc, titleAsc }
+enum NoteSort { updatedDesc, createdDesc, pinnedFirst }
