@@ -86,4 +86,29 @@ void main() {
     await repository.delete(note.id);
     expect(await repository.getById(note.id), isNull);
   });
+  test('supports reference sorting modes', () async {
+    final older = await repository.create(
+      title: 'قدیمی',
+      content: '',
+      category: NoteCategory.general,
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 2));
+    final newer = await repository.create(
+      title: 'جدید',
+      content: '',
+      category: NoteCategory.general,
+    );
+    await repository.setPinned(older.id, true);
+
+    final newest = await repository.list(sort: NoteSort.updatedDesc);
+    expect(newest.first.id, older.id);
+
+    final oldest = await repository.list(sort: NoteSort.createdAsc);
+    expect(oldest.first.id, older.id);
+
+    final pinned = await repository.list(sort: NoteSort.pinnedFirst);
+    expect(pinned.first.id, older.id);
+    expect(pinned.last.id, newer.id);
+  });
+
 }
