@@ -276,7 +276,7 @@ class _Card extends StatelessWidget {
             _Action('ویرایش', NojinIconName.edit, onEdit),
             _Action(note.isPinned ? 'برداشتن سنجاق' : 'سنجاق', NojinIconName.pin, onPin),
             _Action(note.isArchived ? 'بازگردانی' : 'بایگانی', NojinIconName.archive, onArchive),
-            _Action('حذف', NojinIconName.delete, widget.onDelete, danger: true),
+            _Action('حذف', NojinIconName.delete, onDelete, danger: true),
           ]),
         ]),
       ),
@@ -659,9 +659,8 @@ class _BlockEditorState extends State<_BlockEditor> {
             contentPadding: EdgeInsets.zero,
             leading: Text(block.expanded ? '⌄' : '›', style: const TextStyle(fontSize: 22)),
             title: TextField(
-              controller: TextEditingController(text: block.text)..selection =
-                  TextSelection.collapsed(offset: block.text.length),
-              onChanged: onChanged,
+              controller: _controller,
+              onChanged: widget.onChanged,
               decoration: decoration.copyWith(hintText: 'عنوان بازشونده'),
             ),
             onTap: widget.onExpanded,
@@ -695,7 +694,7 @@ class _BlockEditorState extends State<_BlockEditor> {
     );
   }
 
-  String get _hint => switch (block.type) {
+  String get _hint => switch (widget.block.type) {
     RichBlockType.text => 'متن را بنویسید...',
     RichBlockType.heading => 'عنوان...',
     RichBlockType.checklist => 'کار موردنظر...',
