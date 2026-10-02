@@ -285,8 +285,8 @@ class FinanceGoal {
   final DateTime createdAt;
   final DateTime updatedAt;
 
-  int get remainingAmount => (targetAmount - currentAmount).clamp(0, targetAmount);
-  double get progress => targetAmount <= 0 ? 0 : (currentAmount / targetAmount).clamp(0.0, 1.0);
+  int get remainingAmount => (targetAmount - currentAmount).clamp(0, targetAmount).toInt();
+  double get progress => targetAmount <= 0 ? 0.0 : (currentAmount / targetAmount).clamp(0.0, 1.0).toDouble();
 
   FinanceGoalStatus statusAt(DateTime now) {
     if (currentAmount >= targetAmount) return FinanceGoalStatus.completed;
