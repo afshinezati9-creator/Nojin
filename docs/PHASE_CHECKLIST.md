@@ -24,7 +24,7 @@
 ### Finance
 - [x] Phase 12 — Finance Foundation
 - [x] Phase 13 — Iranian Finance
-- [ ] Phase 14 — Finance Dashboard
+- [x] Phase 14 — Finance Dashboard
 - [ ] Phase 15 — Installments
 - [ ] Phase 16 — Debt / Receivable
 - [ ] Phase 17 — Goals / Emergency Fund

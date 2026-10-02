@@ -57,3 +57,36 @@ class FinanceTransaction {
   final DateTime occurredAt;
   final DateTime createdAt;
 }
+
+
+class FinanceDashboardAggregate {
+  const FinanceDashboardAggregate({required this.title, required this.total, required this.currency});
+  final String title;
+  final int total;
+  final IranCurrency currency;
+}
+
+class FinanceDashboardTransaction {
+  const FinanceDashboardTransaction({required this.transaction, required this.accountName, required this.currency});
+  final FinanceTransaction transaction;
+  final String accountName;
+  final IranCurrency currency;
+}
+
+class FinanceDashboardSummary {
+  const FinanceDashboardSummary({
+    required this.tomanIncome, required this.tomanExpense,
+    required this.rialIncome, required this.rialExpense,
+    required this.recent, required this.topExpenses,
+  });
+  final int tomanIncome;
+  final int tomanExpense;
+  final int rialIncome;
+  final int rialExpense;
+  final List<FinanceDashboardTransaction> recent;
+  final List<FinanceDashboardAggregate> topExpenses;
+
+  int get tomanNet => tomanIncome - tomanExpense;
+  int get rialNet => rialIncome - rialExpense;
+  bool get isEmpty => tomanIncome == 0 && tomanExpense == 0 && rialIncome == 0 && rialExpense == 0 && recent.isEmpty;
+}

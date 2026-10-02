@@ -88,3 +88,9 @@ final financeTransactionsProvider = FutureProvider.family<List<FinanceTransactio
     return repo.listTransactions(accountId);
   },
 );
+
+
+final financeDashboardProvider = FutureProvider<FinanceDashboardSummary>((ref) async {
+  final repo = await ref.watch(financeRepositoryProvider.future);
+  return repo.dashboardSummary();
+});
