@@ -14,6 +14,8 @@
 - [x] Phase 07 — Local Database
 - [x] Phase 08 — State Architecture
 
+## Remaining
+
 ### Notes
 - [x] Phase 09 — Notes Foundation
 - [x] Phase 10 — Rich Editor
@@ -46,7 +48,11 @@
 
 ## Execution rule
 
-هر فاز باید مستقل بررسی شود و پس از پیاده‌سازی، تست و review، به main merge شود.
+هر فاز باید مستقل بررسی شود و پس از پیاده‌سازی، تست و review، به `main` merge شود.
+
+ترتیب رسمی باقی‌مانده:
+
+`14 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 22 → 23 → 24 → 25 → 26 → 27 → 28 → 29 → 30`
 
 ## Current project testing policy
 
