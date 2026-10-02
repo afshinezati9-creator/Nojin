@@ -34,7 +34,39 @@ class AudioRecorderService {
     await _recorder.stop();
     _recording = false;
     final bytes = _buffer.takeBytes();
-    return bytes.isEmpty ? null : Uint8List.fromList(bytes);
+    return bytes.isEmpty ? null : _pcmToWav(Uint8List.fromList(bytes));
+  }
+
+  Uint8List _pcmToWav(Uint8List pcm) {
+    const sampleRate = 44100;
+    const channels = 1;
+    const bitsPerSample = 16;
+    final byteRate = sampleRate * channels * bitsPerSample ~/ 8;
+    final blockAlign = channels * bitsPerSample ~/ 8;
+    final dataLength = pcm.length;
+    final output = ByteData(44 + dataLength);
+    void writeString(int offset, String value) {
+      for (var i = 0; i < value.length; i++) {
+        output.setUint8(offset + i, value.codeUnitAt(i));
+      }
+    }
+    writeString(0, 'RIFF');
+    output.setUint32(4, 36 + dataLength, Endian.little);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    output.setUint32(16, 16, Endian.little);
+    output.setUint16(20, 1, Endian.little);
+    output.setUint16(22, channels, Endian.little);
+    output.setUint32(24, sampleRate, Endian.little);
+    output.setUint32(28, byteRate, Endian.little);
+    output.setUint16(32, blockAlign, Endian.little);
+    output.setUint16(34, bitsPerSample, Endian.little);
+    writeString(36, 'data');
+    output.setUint32(40, dataLength, Endian.little);
+    for (var i = 0; i < pcm.length; i++) {
+      output.setUint8(44 + i, pcm[i]);
+    }
+    return output.buffer.asUint8List();
   }
 
   Future<void> cancel() async {
