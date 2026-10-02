@@ -1,6 +1,6 @@
 # NOJÎN — Phase Checklist
 
-آخرین وضعیت: **Phase 10 — Rich Editor**
+آخرین وضعیت: **Phase 11 — Media Engine**
 
 ## Completed
 
@@ -19,7 +19,7 @@
 ### Notes
 - [x] Phase 09 — Notes Foundation
 - [x] Phase 10 — Rich Editor
-- [ ] Phase 11 — Media Engine
+- [x] Phase 11 — Media Engine
 
 ### Finance
 - [ ] Phase 12 — Finance Foundation
