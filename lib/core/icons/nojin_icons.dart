@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-enum NojinIconName { home, notes, finance, planning, info, search, sparkle, add, edit, pin, archive, delete }
+enum NojinIconName { home, notes, finance, planning, info, search, sparkle, add, edit, pin, archive, delete, close, arrowUp, arrowDown, copy, chevronDown, chevronLeft }
 
 abstract final class NojinIconAssets {
   static const _root = 'assets/icons';
@@ -19,6 +19,12 @@ abstract final class NojinIconAssets {
         NojinIconName.pin => '$_root/pin.svg',
         NojinIconName.archive => '$_root/archive.svg',
         NojinIconName.delete => '$_root/delete.svg',
+        NojinIconName.close => '$_root/close.svg',
+        NojinIconName.arrowUp => '$_root/arrow_up.svg',
+        NojinIconName.arrowDown => '$_root/arrow_down.svg',
+        NojinIconName.copy => '$_root/copy.svg',
+        NojinIconName.chevronDown => '$_root/chevron_down.svg',
+        NojinIconName.chevronLeft => '$_root/chevron_left.svg',
       };
 }
 
@@ -57,5 +63,11 @@ extension NojinIconNameX on NojinIconName {
         NojinIconName.pin => 'سنجاق',
         NojinIconName.archive => 'بایگانی',
         NojinIconName.delete => 'حذف',
+        NojinIconName.close => 'بستن',
+        NojinIconName.arrowUp => 'بالا',
+        NojinIconName.arrowDown => 'پایین',
+        NojinIconName.copy => 'کپی',
+        NojinIconName.chevronDown => 'باز',
+        NojinIconName.chevronLeft => 'بسته',
       };
 }
