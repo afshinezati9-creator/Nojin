@@ -8,6 +8,8 @@ import '../../../core/theme/nojin_tokens.dart';
 import '../application/notes_state.dart';
 import '../data/notes_repository.dart';
 import '../domain/note.dart';
+import '../domain/rich_block.dart';
+import '../domain/rich_block_codec.dart';
 
 class NotesPage extends ConsumerStatefulWidget {
   const NotesPage({super.key});
@@ -257,7 +259,7 @@ class _Card extends StatelessWidget {
           ]),
           if (note.content.trim().isNotEmpty) ...[
             const SizedBox(height: 5),
-            Text(note.content.trim(), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: NojinColors.text2, height: 1.6)),
+            Text(RichBlockCodec.preview(note.content), maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: NojinColors.text2, height: 1.6)),
           ],
           const SizedBox(height: 9),
           Row(children: [
@@ -349,22 +351,64 @@ class _Editor extends StatefulWidget {
 
 class _EditorState extends State<_Editor> {
   late final TextEditingController title;
-  late final TextEditingController content;
   late NoteCategory category;
+  late List<RichBlock> blocks;
 
   @override
   void initState() {
     super.initState();
     title = TextEditingController(text: widget.note?.title ?? '');
-    content = TextEditingController(text: widget.note?.content ?? '');
     category = widget.note?.category ?? NoteCategory.general;
+    blocks = widget.note == null
+        ? [_newBlock(RichBlockType.text)]
+        : List.of(RichBlockCodec.fromContent(widget.note!.content).blocks);
+    if (blocks.isEmpty) blocks = [_newBlock(RichBlockType.text)];
   }
+
+  RichBlock _newBlock(RichBlockType type, [String text = '']) => RichBlock(
+        id: DateTime.now().microsecondsSinceEpoch.toString() + '-' + blocks.length.toString(),
+        type: type,
+        text: text,
+      );
 
   @override
   void dispose() {
     title.dispose();
-    content.dispose();
     super.dispose();
+  }
+
+  void _add(RichBlockType type) {
+    setState(() => blocks.add(_newBlock(type)));
+  }
+
+  void _remove(int index) {
+    if (blocks.length == 1) {
+      setState(() => blocks[0] = _newBlock(RichBlockType.text));
+      return;
+    }
+    setState(() => blocks.removeAt(index));
+  }
+
+  void _move(int index, int delta) {
+    final target = index + delta;
+    if (target < 0 || target >= blocks.length) return;
+    setState(() {
+      final block = blocks.removeAt(index);
+      blocks.insert(target, block);
+    });
+  }
+
+  void _update(int index, String value) {
+    blocks[index] = blocks[index].copyWith(text: value);
+  }
+
+  void _save() {
+    final document = RichDocument(blocks);
+    Navigator.pop(context, _Draft(
+      title.text,
+      RichBlockCodec.toContent(document),
+      category,
+    ));
   }
 
   @override
@@ -377,31 +421,264 @@ class _EditorState extends State<_Editor> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         child: SafeArea(
           top: false,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Center(child: Container(width: 42, height: 4, decoration: BoxDecoration(color: NojinColors.border, borderRadius: BorderRadius.circular(4)))),
-              const SizedBox(height: 18),
-              Text(editing ? 'ویرایش یادداشت' : 'یادداشت جدید', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 16),
-              TextField(controller: title, autofocus: !editing, decoration: const InputDecoration(labelText: 'عنوان')),
-              const SizedBox(height: 12),
-              TextField(controller: content, minLines: 5, maxLines: 10, decoration: const InputDecoration(labelText: 'متن یادداشت', alignLabelWithHint: true)),
-              const SizedBox(height: 14),
-              const Text('دسته‌بندی', style: TextStyle(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 8),
-              Wrap(spacing: 7, children: NoteCategory.values.map((c) => ChoiceChip(
-                label: Text(c.label), selected: category == c, onSelected: (_) => setState(() => category = c),
-              )).toList()),
-              const SizedBox(height: 18),
-              SizedBox(width: double.infinity, child: FilledButton(
-                onPressed: () => Navigator.pop(context, _Draft(title.text, content.text, category)),
-                child: Text(editing ? 'ذخیره تغییرات' : 'ساخت یادداشت'),
-              )),
-            ]),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 760),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+                  child: Row(children: [
+                    Expanded(
+                      child: Text(
+                        editing ? 'ویرایش یادداشت' : 'یادداشت جدید',
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'بستن',
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Text('×', style: TextStyle(fontSize: 26)),
+                    ),
+                  ]),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
+                  child: TextField(
+                    controller: title,
+                    autofocus: !editing,
+                    decoration: const InputDecoration(labelText: 'عنوان'),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _BlockToolbar(onAdd: _add),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                    itemCount: blocks.length,
+                    itemBuilder: (context, index) => _BlockEditor(
+                      key: ValueKey(blocks[index].id),
+                      block: blocks[index],
+                      onChanged: (value) => setState(() => _update(index, value)),
+                      onToggle: () => setState(() => blocks[index] =
+                          blocks[index].copyWith(checked: !blocks[index].checked)),
+                      onExpanded: () => setState(() => blocks[index] =
+                          blocks[index].copyWith(expanded: !blocks[index].expanded)),
+                      onDelete: () => _remove(index),
+                      onUp: index == 0 ? null : () => _move(index, -1),
+                      onDown: index == blocks.length - 1 ? null : () => _move(index, 1),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 8, 18, 14),
+                  child: Row(children: [
+                    Expanded(
+                      child: DropdownButtonFormField<NoteCategory>(
+                        initialValue: category,
+                        decoration: const InputDecoration(labelText: 'دسته‌بندی'),
+                        items: NoteCategory.values
+                            .map((c) => DropdownMenuItem(value: c, child: Text(c.label)))
+                            .toList(),
+                        onChanged: (value) => setState(() => category = value ?? category),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    FilledButton(
+                      onPressed: _save,
+                      child: Text(editing ? 'ذخیره' : 'ساخت'),
+                    ),
+                  ]),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+class _BlockToolbar extends StatelessWidget {
+  const _BlockToolbar({required this.onAdd});
+  final ValueChanged<RichBlockType> onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 54,
+      child: ListView(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        scrollDirection: Axis.horizontal,
+        children: [
+          _Tool('متن', RichBlockType.text, onAdd),
+          _Tool('عنوان', RichBlockType.heading, onAdd),
+          _Tool('چک‌لیست', RichBlockType.checklist, onAdd),
+          _Tool('نقل‌قول', RichBlockType.quote, onAdd),
+          _Tool('کد', RichBlockType.code, onAdd),
+          _Tool('خط', RichBlockType.divider, onAdd),
+          _Tool('بازشونده', RichBlockType.toggle, onAdd),
+        ],
+      ),
+    );
+  }
+}
+
+class _Tool extends StatelessWidget {
+  const _Tool(this.label, this.type, this.onAdd);
+  final String label;
+  final RichBlockType type;
+  final ValueChanged<RichBlockType> onAdd;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.only(end: 6),
+    child: ActionChip(
+      avatar: const NojinIcon(NojinIconName.add, size: 14),
+      label: Text(label),
+      onPressed: () => onAdd(type),
+    ),
+  );
+}
+
+class _BlockEditor extends StatelessWidget {
+  const _BlockEditor({
+    super.key,
+    required this.block,
+    required this.onChanged,
+    required this.onToggle,
+    required this.onExpanded,
+    required this.onDelete,
+    required this.onUp,
+    required this.onDown,
+  });
+  final RichBlock block;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onToggle;
+  final VoidCallback onExpanded;
+  final VoidCallback onDelete;
+  final VoidCallback? onUp;
+  final VoidCallback? onDown;
+
+  @override
+  Widget build(BuildContext context) {
+    if (block.type == RichBlockType.divider) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(children: [
+          const Expanded(child: Divider()),
+          IconButton(onPressed: onDelete, tooltip: 'حذف', icon: const Text('×')),
+        ]),
+      );
+    }
+
+    final decoration = InputDecoration(
+      hintText: _hint,
+      border: InputBorder.none,
+      filled: true,
+      fillColor: block.type == RichBlockType.code
+          ? NojinColors.background
+          : Theme.of(context).colorScheme.surface,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    );
+
+    Widget editor;
+    switch (block.type) {
+      case RichBlockType.heading:
+        editor = TextField(
+          controller: TextEditingController(text: block.text)..selection =
+              TextSelection.collapsed(offset: block.text.length),
+          onChanged: onChanged,
+          maxLines: 2,
+          style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
+          decoration: decoration,
+        );
+      case RichBlockType.checklist:
+        editor = Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Checkbox(value: block.checked, onChanged: (_) => onToggle()),
+          Expanded(child: TextField(
+            controller: TextEditingController(text: block.text)..selection =
+                TextSelection.collapsed(offset: block.text.length),
+            onChanged: onChanged,
+            minLines: 1,
+            maxLines: 5,
+            decoration: decoration,
+          )),
+        ]);
+      case RichBlockType.quote:
+        editor = Container(
+          decoration: const BoxDecoration(
+            border: BorderDirectional(start: BorderSide(color: NojinColors.indigo, width: 3)),
+          ),
+          child: TextField(
+            controller: TextEditingController(text: block.text)..selection =
+                TextSelection.collapsed(offset: block.text.length),
+            onChanged: onChanged,
+            minLines: 2,
+            maxLines: 8,
+            decoration: decoration.copyWith(hintText: 'متن نقل‌قول'),
+          ),
+        );
+      case RichBlockType.code:
+        editor = TextField(
+          controller: TextEditingController(text: block.text)..selection =
+              TextSelection.collapsed(offset: block.text.length),
+          onChanged: onChanged,
+          minLines: 3,
+          maxLines: 12,
+          style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
+          decoration: decoration.copyWith(hintText: 'کد'),
+        );
+      case RichBlockType.toggle:
+        editor = Column(children: [
+          ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: NojinIcon(block.expanded ? NojinIconName.chevronDown : NojinIconName.chevronLeft, size: 18),
+            title: TextField(
+              controller: TextEditingController(text: block.text)..selection =
+                  TextSelection.collapsed(offset: block.text.length),
+              onChanged: onChanged,
+              decoration: decoration.copyWith(hintText: 'عنوان بازشونده'),
+            ),
+            onTap: onExpanded,
+          ),
+          if (block.expanded)
+            const Padding(
+              padding: EdgeInsetsDirectional.only(start: 40, bottom: 6),
+              child: Align(alignment: AlignmentDirectional.centerStart, child: Text('محتوای بازشونده در فازهای بعدی قابل توسعه است.')),
+            ),
+        ]);
+      case RichBlockType.text:
+        editor = TextField(
+          controller: TextEditingController(text: block.text)..selection =
+              TextSelection.collapsed(offset: block.text.length),
+          onChanged: onChanged,
+          minLines: 2,
+          maxLines: 8,
+          decoration: decoration.copyWith(hintText: 'متن را بنویسید...'),
+        );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(children: [
+        editor,
+        Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+          IconButton(onPressed: onUp, tooltip: 'بالا', icon: const Text('↑')),
+          IconButton(onPressed: onDown, tooltip: 'پایین', icon: const Text('↓')),
+          IconButton(onPressed: onDelete, tooltip: 'حذف بلوک', icon: const Text('×')),
+        ]),
+      ]),
+    );
+  }
+
+  String get _hint => switch (block.type) {
+    RichBlockType.text => 'متن را بنویسید...',
+    RichBlockType.heading => 'عنوان...',
+    RichBlockType.checklist => 'کار موردنظر...',
+    RichBlockType.quote => 'نقل‌قول...',
+    RichBlockType.code => 'کد...',
+    RichBlockType.toggle => 'عنوان بازشونده...',
+    RichBlockType.divider => '',
+  };
 }
