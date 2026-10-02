@@ -20,6 +20,29 @@ void main() {
     expect(RichBlockCodec.preview(encoded), 'عنوان\nکار\nfinal x = 1;');
   });
 
+  test('round-trips media block identifiers', () {
+    const document = RichDocument([
+      RichBlock(
+        id: 'media-1',
+        type: RichBlockType.image,
+        text: 'photo.png',
+        mediaId: 'attachment-1',
+      ),
+      RichBlock(
+        id: 'media-2',
+        type: RichBlockType.audio,
+        text: 'voice.wav',
+        mediaId: 'attachment-2',
+      ),
+    ]);
+
+    final decoded = RichBlockCodec.fromContent(document.encode());
+    expect(decoded.blocks[0].type, RichBlockType.image);
+    expect(decoded.blocks[0].mediaId, 'attachment-1');
+    expect(decoded.blocks[1].type, RichBlockType.audio);
+    expect(decoded.blocks[1].mediaId, 'attachment-2');
+  });
+
   test('keeps legacy plain text readable', () {
     final document = RichBlockCodec.fromContent('متن قدیمی');
     expect(document.blocks.single.type, RichBlockType.text);
