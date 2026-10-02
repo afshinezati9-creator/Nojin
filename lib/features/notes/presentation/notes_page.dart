@@ -492,9 +492,9 @@ class _EditorState extends State<_Editor> {
     });
   }
 
-  Future<void> _pickImage() => _addMedia(_media.pickImage().then((v) => v).catchError((_) => null));
-  Future<void> _pickVideo() => _addMedia(_media.pickVideo().then((v) => v).catchError((_) => null));
-  Future<void> _pickFile() => _addMedia(_media.pickFile().then((v) => v).catchError((_) => null));
+  Future<void> _pickImage() async { await _addMedia(await _media.pickImage()); }
+  Future<void> _pickVideo() async { await _addMedia(await _media.pickVideo()); }
+  Future<void> _pickFile() async { await _addMedia(await _media.pickFile()); }
 
   Future<void> _recordAudio() async {
     if (_recorder.isRecording) {
@@ -603,8 +603,21 @@ class _EditorState extends State<_Editor> {
 }
 
 class _BlockToolbar extends StatelessWidget {
-  const _BlockToolbar({required this.onAdd});
+  const _BlockToolbar({
+    required this.onAdd,
+    required this.onImage,
+    required this.onVideo,
+    required this.onFile,
+    required this.onAudio,
+    required this.recording,
+  });
+
   final ValueChanged<RichBlockType> onAdd;
+  final VoidCallback onImage;
+  final VoidCallback onVideo;
+  final VoidCallback onFile;
+  final VoidCallback onAudio;
+  final bool recording;
 
   @override
   Widget build(BuildContext context) {
@@ -624,10 +637,31 @@ class _BlockToolbar extends StatelessWidget {
           _Tool('کد', RichBlockType.code, onAdd),
           _Tool('خط', RichBlockType.divider, onAdd),
           _Tool('بازشونده', RichBlockType.toggle, onAdd),
+          const VerticalDivider(width: 18),
+          _MediaTool('تصویر', onImage),
+          _MediaTool('ویدئو', onVideo),
+          _MediaTool(recording ? 'توقف ضبط' : 'ضبط صوت', onAudio),
+          _MediaTool('فایل', onFile),
         ],
       ),
     );
   }
+}
+
+class _MediaTool extends StatelessWidget {
+  const _MediaTool(this.label, this.onTap);
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.only(end: 6),
+    child: ActionChip(
+      avatar: const NojinIcon(NojinIconName.add, size: 14),
+      label: Text(label),
+      onPressed: onTap,
+    ),
+  );
 }
 
 class _Tool extends StatelessWidget {
@@ -656,6 +690,8 @@ class _BlockEditor extends StatefulWidget {
     required this.onDelete,
     required this.onUp,
     required this.onDown,
+    required this.mediaRepository,
+    required this.pendingMedia,
   });
   final RichBlock block;
   final ValueChanged<String> onChanged;
@@ -664,6 +700,8 @@ class _BlockEditor extends StatefulWidget {
   final VoidCallback onDelete;
   final VoidCallback? onUp;
   final VoidCallback? onDown;
+  final MediaRepository mediaRepository;
+  final List<MediaDraft> pendingMedia;
 
   @override
   State<_BlockEditor> createState() => _BlockEditorState();
