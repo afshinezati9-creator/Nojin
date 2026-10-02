@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-enum RichBlockType { text, heading, checklist, quote, code, divider, toggle }
+enum RichBlockType { text, heading, checklist, bulletList, numberedList, quote, code, date, divider, toggle }
 
 class RichBlock {
   const RichBlock({
