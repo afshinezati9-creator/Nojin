@@ -1,5 +1,5 @@
 abstract final class NojinSchema {
-  static const version = 1;
+  static const version = 2;
   static const createStatements = <String>[
     'CREATE TABLE app_settings (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)',
     'CREATE TABLE notes (id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, content TEXT NOT NULL DEFAULT "", category TEXT NOT NULL DEFAULT "general", is_pinned INTEGER NOT NULL DEFAULT 0, is_archived INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
@@ -7,6 +7,8 @@ abstract final class NojinSchema {
     'CREATE TABLE finance_transactions (id TEXT NOT NULL PRIMARY KEY, account_id TEXT NOT NULL, title TEXT NOT NULL, amount INTEGER NOT NULL, transaction_type TEXT NOT NULL, note TEXT NOT NULL DEFAULT "", occurred_at INTEGER NOT NULL, created_at INTEGER NOT NULL)',
     'CREATE TABLE planning_items (id TEXT NOT NULL PRIMARY KEY, item_type TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL DEFAULT "active", scheduled_at INTEGER, due_at INTEGER, progress REAL NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
     'CREATE TABLE info_items (id TEXT NOT NULL PRIMARY KEY, item_type TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL DEFAULT "", is_pinned INTEGER NOT NULL DEFAULT 0, usage_count INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
+    'CREATE TABLE note_media (id TEXT NOT NULL PRIMARY KEY, note_id TEXT NOT NULL, media_type TEXT NOT NULL, file_name TEXT NOT NULL, mime_type TEXT NOT NULL, bytes BLOB NOT NULL, size_bytes INTEGER NOT NULL, duration_ms INTEGER, created_at INTEGER NOT NULL)',
+    'CREATE INDEX note_media_note_idx ON note_media(note_id, created_at)',
     'CREATE INDEX notes_updated_at_idx ON notes(updated_at)',
     'CREATE INDEX notes_category_idx ON notes(category)',
     'CREATE INDEX notes_archived_pinned_idx ON notes(is_archived, is_pinned)',
@@ -20,6 +22,6 @@ abstract final class NojinSchema {
     'CREATE INDEX info_items_updated_at_idx ON info_items(updated_at)',
   ];
   static const tableNames = <String>[
-    'app_settings','notes','finance_accounts','finance_transactions','planning_items','info_items',
+    'app_settings','notes','finance_accounts','finance_transactions','planning_items','info_items','note_media',
   ];
 }

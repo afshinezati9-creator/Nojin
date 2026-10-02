@@ -63,6 +63,10 @@ class NojinDatabase {
               await tx.runCustom(sql);
             }
             break;
+          case 2:
+            await tx.runCustom('CREATE TABLE note_media (id TEXT NOT NULL PRIMARY KEY, note_id TEXT NOT NULL, media_type TEXT NOT NULL, file_name TEXT NOT NULL, mime_type TEXT NOT NULL, bytes BLOB NOT NULL, size_bytes INTEGER NOT NULL, duration_ms INTEGER, created_at INTEGER NOT NULL)');
+            await tx.runCustom('CREATE INDEX note_media_note_idx ON note_media(note_id, created_at)');
+            break;
           default:
             throw StateError('Missing migration for database version ' + version.toString() + '.');
         }

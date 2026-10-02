@@ -1,13 +1,22 @@
 import 'dart:async';
-import 'package:flutter/services.dart';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../../core/icons/nojin_icons.dart';
 import '../../../core/iran/iran_date.dart';
 import '../../../core/layout/nojin_breakpoints.dart';
 import '../../../core/theme/nojin_tokens.dart';
 import '../application/notes_state.dart';
 import '../data/notes_repository.dart';
+import '../data/media_provider.dart';
+import '../data/media_repository.dart';
+import '../application/media_service.dart';
+import '../application/audio_recorder_service.dart';
+import '../domain/media_attachment.dart';
+import '../domain/media_format.dart';
 import '../domain/note.dart';
 import '../domain/rich_block.dart';
 import '../domain/rich_block_codec.dart';
@@ -37,22 +46,62 @@ class _NotesPageState extends ConsumerState<NotesPage> {
   }
 
   Future<void> _edit([Note? note]) async {
+    final mediaRepository = await ref.read(mediaRepositoryProvider.future);
+    if (!mounted) return;
     final draft = await showModalBottomSheet<_Draft>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      builder: (_) => _Editor(note: note),
+      builder: (_) => _Editor(note: note, mediaRepository: mediaRepository),
     );
     if (!mounted || draft == null) return;
     final n = ref.read(notesStateProvider.notifier);
+    Note saved;
     if (note == null) {
-      await n.create(title: draft.title, content: draft.content, category: draft.category);
+      saved = await n.create(
+        title: draft.title,
+        content: draft.content,
+        category: draft.category,
+      );
     } else {
-      await n.update(note.copyWith(
+      saved = note.copyWith(
         title: draft.title.trim().isEmpty ? 'یادداشت بدون عنوان' : draft.title.trim(),
         content: draft.content,
         category: draft.category,
-      ));
+      );
+    }
+
+    final mediaIds = <String, String>{};
+    for (final pending in draft.pendingMedia.where((item) => draft.content.contains(item.tempId))) {
+      final attachment = await mediaRepository.add(
+        noteId: saved.id,
+        type: pending.type,
+        fileName: pending.fileName,
+        mimeType: pending.mimeType,
+        bytes: pending.bytes,
+        durationMs: pending.durationMs,
+      );
+      mediaIds[pending.tempId] = attachment.id;
+    }
+
+    var document = RichDocument.decode(draft.content);
+    document = RichDocument(document.blocks.map((block) {
+      final mapped = block.mediaId == null ? null : mediaIds[block.mediaId!];
+      return mapped == null ? block : block.copyWith(mediaId: mapped);
+    }).toList(growable: false));
+
+    if (note != null) {
+      final previous = RichDocument.decode(note.content).blocks
+          .map((b) => b.mediaId)
+          .whereType<String>()
+          .toSet();
+      final current = document.blocks.map((b) => b.mediaId).whereType<String>().toSet();
+      for (final id in previous.difference(current)) {
+        await mediaRepository.delete(id);
+      }
+      await n.update(saved.copyWith(content: RichBlockCodec.toContent(document)));
+    } else if (draft.pendingMedia.isNotEmpty) {
+      await n.update(saved.copyWith(content: RichBlockCodec.toContent(document)));
     }
   }
 
@@ -337,15 +386,17 @@ class _Empty extends StatelessWidget {
 }
 
 class _Draft {
-  const _Draft(this.title, this.content, this.category);
+  const _Draft(this.title, this.content, this.category, this.pendingMedia);
   final String title;
   final String content;
   final NoteCategory category;
+  final List<MediaDraft> pendingMedia;
 }
 
 class _Editor extends StatefulWidget {
-  const _Editor({this.note});
+  const _Editor({this.note, required this.mediaRepository});
   final Note? note;
+  final MediaRepository mediaRepository;
   @override
   State<_Editor> createState() => _EditorState();
 }
@@ -354,6 +405,9 @@ class _EditorState extends State<_Editor> {
   late final TextEditingController title;
   late NoteCategory category;
   late List<RichBlock> blocks;
+  final List<MediaDraft> pendingMedia = [];
+  final MediaService _media = MediaService();
+  final AudioRecorderService _recorder = AudioRecorderService();
 
   @override
   void initState() {
@@ -375,6 +429,7 @@ class _EditorState extends State<_Editor> {
   @override
   void dispose() {
     title.dispose();
+    _recorder.dispose();
     super.dispose();
   }
 
@@ -409,7 +464,54 @@ class _EditorState extends State<_Editor> {
       title.text,
       RichBlockCodec.toContent(document),
       category,
+      List.unmodifiable(pendingMedia),
     ));
+  }
+
+  Future<void> _addMedia(MediaDraft? draft) async {
+    if (draft == null) return;
+    if (draft.bytes.length > MediaLimits.maxBytes) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('حجم فایل بیشتر از ۲۵ مگابایت است.')),
+        );
+      }
+      return;
+    }
+    setState(() {
+      pendingMedia.add(draft);
+      blocks.add(RichBlock(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        type: switch (draft.type) {
+          MediaType.image => RichBlockType.image,
+          MediaType.video => RichBlockType.video,
+          MediaType.audio => RichBlockType.audio,
+          MediaType.file => RichBlockType.file,
+        },
+        mediaId: draft.tempId,
+        text: draft.fileName,
+      ));
+    });
+  }
+
+  Future<void> _pickImage() async { await _addMedia(await _media.pickImage()); }
+  Future<void> _pickVideo() async { await _addMedia(await _media.pickVideo()); }
+  Future<void> _pickFile() async { await _addMedia(await _media.pickFile()); }
+
+  Future<void> _recordAudio() async {
+    if (_recorder.isRecording) {
+      final bytes = await _recorder.stop();
+      if (bytes != null) await _addMedia(_media.fromRecordedBytes(bytes: bytes));
+      if (mounted) setState(() {});
+      return;
+    }
+    final ok = await _recorder.start();
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('دسترسی میکروفون داده نشد.')),
+      );
+    }
+    if (mounted) setState(() {});
   }
 
   @override
@@ -451,7 +553,7 @@ class _EditorState extends State<_Editor> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                _BlockToolbar(onAdd: _add),
+                _BlockToolbar(onAdd: _add, onImage: _pickImage, onVideo: _pickVideo, onFile: _pickFile, onAudio: _recordAudio, recording: _recorder.isRecording),
                 const Divider(height: 1),
                 Expanded(
                   child: ListView.builder(
@@ -468,6 +570,8 @@ class _EditorState extends State<_Editor> {
                       onDelete: () => _remove(index),
                       onUp: index == 0 ? null : () => _move(index, -1),
                       onDown: index == blocks.length - 1 ? null : () => _move(index, 1),
+                      mediaRepository: widget.mediaRepository,
+                      pendingMedia: pendingMedia,
                     ),
                   ),
                 ),
@@ -501,8 +605,21 @@ class _EditorState extends State<_Editor> {
 }
 
 class _BlockToolbar extends StatelessWidget {
-  const _BlockToolbar({required this.onAdd});
+  const _BlockToolbar({
+    required this.onAdd,
+    required this.onImage,
+    required this.onVideo,
+    required this.onFile,
+    required this.onAudio,
+    required this.recording,
+  });
+
   final ValueChanged<RichBlockType> onAdd;
+  final VoidCallback onImage;
+  final VoidCallback onVideo;
+  final VoidCallback onFile;
+  final VoidCallback onAudio;
+  final bool recording;
 
   @override
   Widget build(BuildContext context) {
@@ -522,10 +639,31 @@ class _BlockToolbar extends StatelessWidget {
           _Tool('کد', RichBlockType.code, onAdd),
           _Tool('خط', RichBlockType.divider, onAdd),
           _Tool('بازشونده', RichBlockType.toggle, onAdd),
+          const VerticalDivider(width: 18),
+          _MediaTool('تصویر', onImage),
+          _MediaTool('ویدئو', onVideo),
+          _MediaTool(recording ? 'توقف ضبط' : 'ضبط صوت', onAudio),
+          _MediaTool('فایل', onFile),
         ],
       ),
     );
   }
+}
+
+class _MediaTool extends StatelessWidget {
+  const _MediaTool(this.label, this.onTap);
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.only(end: 6),
+    child: ActionChip(
+      avatar: const NojinIcon(NojinIconName.add, size: 14),
+      label: Text(label),
+      onPressed: onTap,
+    ),
+  );
 }
 
 class _Tool extends StatelessWidget {
@@ -554,6 +692,8 @@ class _BlockEditor extends StatefulWidget {
     required this.onDelete,
     required this.onUp,
     required this.onDown,
+    required this.mediaRepository,
+    required this.pendingMedia,
   });
   final RichBlock block;
   final ValueChanged<String> onChanged;
@@ -562,9 +702,105 @@ class _BlockEditor extends StatefulWidget {
   final VoidCallback onDelete;
   final VoidCallback? onUp;
   final VoidCallback? onDown;
+  final MediaRepository mediaRepository;
+  final List<MediaDraft> pendingMedia;
 
   @override
   State<_BlockEditor> createState() => _BlockEditorState();
+}
+
+class _MediaBlockPreview extends StatefulWidget {
+  const _MediaBlockPreview({
+    required this.type,
+    required this.fileName,
+    required this.mimeType,
+    required this.bytes,
+    required this.sizeBytes,
+  });
+
+  final RichBlockType type;
+  final String fileName;
+  final String mimeType;
+  final Uint8List bytes;
+  final int sizeBytes;
+
+  @override
+  State<_MediaBlockPreview> createState() => _MediaBlockPreviewState();
+}
+
+class _MediaBlockPreviewState extends State<_MediaBlockPreview> {
+  AudioPlayer? _player;
+  bool _playing = false;
+
+  @override
+  void dispose() {
+    _player?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _toggleAudio() async {
+    final player = _player ??= AudioPlayer();
+    if (_playing) {
+      await player.pause();
+      if (mounted) setState(() => _playing = false);
+      return;
+    }
+    await player.play(BytesSource(widget.bytes, mimeType: widget.mimeType));
+    if (mounted) setState(() => _playing = true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.type == RichBlockType.image) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(NojinRadii.md),
+        child: Image.memory(widget.bytes, fit: BoxFit.cover, width: double.infinity, height: 220),
+      );
+    }
+
+    final icon = switch (widget.type) {
+      RichBlockType.video => Icons.movie_outlined,
+      RichBlockType.audio => Icons.mic_none,
+      _ => Icons.insert_drive_file_outlined,
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: NojinColors.background,
+        borderRadius: BorderRadius.circular(NojinRadii.md),
+        border: Border.all(color: NojinColors.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: NojinColors.indigo),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.fileName, maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 3),
+                Text(MediaFormat.size(widget.sizeBytes), style: const TextStyle(color: NojinColors.text3, fontSize: 11)),
+              ],
+            ),
+          ),
+          if (widget.type == RichBlockType.audio)
+            IconButton(
+              tooltip: _playing ? 'توقف' : 'پخش',
+              onPressed: _toggleAudio,
+              icon: NojinIcon(
+                _playing ? NojinIconName.close : NojinIconName.sparkle,
+                size: 18,
+                color: NojinColors.indigo,
+              ),
+            ),
+          if (widget.type == RichBlockType.video)
+            const Text('ویدئو', style: TextStyle(color: NojinColors.text3, fontSize: 11)),
+        ],
+      ),
+    );
+  }
 }
 
 class _BlockEditorState extends State<_BlockEditor> {
@@ -593,6 +829,55 @@ class _BlockEditorState extends State<_BlockEditor> {
   @override
   Widget build(BuildContext context) {
     final block = widget.block;
+    if (const [
+      RichBlockType.image,
+      RichBlockType.video,
+      RichBlockType.audio,
+      RichBlockType.file,
+    ].contains(block.type)) {
+      MediaDraft? pending;
+      for (final item in widget.pendingMedia) {
+        if (item.tempId == block.mediaId) { pending = item; break; }
+      }
+      if (pending != null) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _MediaBlockPreview(
+            type: block.type,
+            fileName: pending.fileName,
+            mimeType: pending.mimeType,
+            bytes: pending.bytes,
+            sizeBytes: pending.bytes.length,
+          ),
+        );
+      }
+      return FutureBuilder<MediaAttachment?>(
+        future: block.mediaId == null ? Future.value(null) : widget.mediaRepository.getById(block.mediaId!),
+        builder: (context, snapshot) {
+          final media = snapshot.data;
+          if (media == null) {
+            return const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: Icon(Icons.broken_image_outlined),
+                title: Text('رسانه پیدا نشد'),
+              ),
+            );
+          }
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: _MediaBlockPreview(
+              type: block.type,
+              fileName: media.fileName,
+              mimeType: media.mimeType,
+              bytes: media.bytes,
+              sizeBytes: media.sizeBytes,
+            ),
+          );
+        },
+      );
+    }
+
     if (block.type == RichBlockType.divider) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -709,6 +994,11 @@ class _BlockEditorState extends State<_BlockEditor> {
               child: Align(alignment: AlignmentDirectional.centerStart, child: Text('محتوای بازشونده در فازهای بعدی قابل توسعه است.')),
             ),
         ]);
+      case RichBlockType.image:
+      case RichBlockType.video:
+      case RichBlockType.audio:
+      case RichBlockType.file:
+        editor = const SizedBox.shrink();
       case RichBlockType.text:
         editor = TextField(
           controller: _controller,
@@ -743,5 +1033,9 @@ class _BlockEditorState extends State<_BlockEditor> {
     RichBlockType.date => '',
     RichBlockType.toggle => 'عنوان بازشونده...',
     RichBlockType.divider => '',
+    RichBlockType.image => '',
+    RichBlockType.video => '',
+    RichBlockType.audio => '',
+    RichBlockType.file => '',
   };
 }
