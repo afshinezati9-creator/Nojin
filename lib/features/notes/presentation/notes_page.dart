@@ -276,7 +276,7 @@ class _Card extends StatelessWidget {
             _Action('ویرایش', NojinIconName.edit, onEdit),
             _Action(note.isPinned ? 'برداشتن سنجاق' : 'سنجاق', NojinIconName.pin, onPin),
             _Action(note.isArchived ? 'بازگردانی' : 'بایگانی', NojinIconName.archive, onArchive),
-            _Action('حذف', NojinIconName.delete, onDelete, danger: true),
+            _Action('حذف', NojinIconName.delete, widget.onDelete, danger: true),
           ]),
         ]),
       ),
@@ -540,7 +540,7 @@ class _Tool extends StatelessWidget {
   );
 }
 
-class _BlockEditor extends StatelessWidget {
+class _BlockEditor extends StatefulWidget {
   const _BlockEditor({
     super.key,
     required this.block,
@@ -548,8 +548,8 @@ class _BlockEditor extends StatelessWidget {
     required this.onToggle,
     required this.onExpanded,
     required this.onDelete,
-    required this.onUp,
-    required this.onDown,
+    required this.widget.onUp,
+    required this.widget.onDown,
   });
   final RichBlock block;
   final ValueChanged<String> onChanged;
@@ -560,13 +560,41 @@ class _BlockEditor extends StatelessWidget {
   final VoidCallback? onDown;
 
   @override
+  State<_BlockEditor> createState() => _BlockEditorState();
+}
+
+class _BlockEditorState extends State<_BlockEditor> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.block.text);
+  }
+
+  @override
+  void didUpdateWidget(covariant _BlockEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.block.text != widget.block.text && _controller.text != widget.block.text) {
+      final selection = _controller.selection;
+      _controller.value = TextEditingValue(text: widget.block.text,
+        selection: selection.isValid && selection.end <= widget.block.text.length
+            ? selection : TextSelection.collapsed(offset: widget.block.text.length));
+    }
+  }
+
+  @override
+  void dispose() { _controller.dispose(); super.dispose(); }
+
+  @override
   Widget build(BuildContext context) {
+    final block = widget.block;
     if (block.type == RichBlockType.divider) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(children: [
           const Expanded(child: Divider()),
-          IconButton(onPressed: onDelete, tooltip: 'حذف', icon: const Text('×')),
+          IconButton(onPressed: widget.onDelete, tooltip: 'حذف', icon: const Text('×')),
         ]),
       );
     }
@@ -585,20 +613,18 @@ class _BlockEditor extends StatelessWidget {
     switch (block.type) {
       case RichBlockType.heading:
         editor = TextField(
-          controller: TextEditingController(text: block.text)..selection =
-              TextSelection.collapsed(offset: block.text.length),
-          onChanged: onChanged,
+          controller: _controller,
+          onChanged: widget.onChanged,
           maxLines: 2,
           style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800),
           decoration: decoration,
         );
       case RichBlockType.checklist:
         editor = Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Checkbox(value: block.checked, onChanged: (_) => onToggle()),
+          Checkbox(value: block.checked, onChanged: (_) => widget.onToggle()),
           Expanded(child: TextField(
-            controller: TextEditingController(text: block.text)..selection =
-                TextSelection.collapsed(offset: block.text.length),
-            onChanged: onChanged,
+            controller: _controller,
+            onChanged: widget.onChanged,
             minLines: 1,
             maxLines: 5,
             decoration: decoration,
@@ -633,7 +659,7 @@ class _BlockEditor extends StatelessWidget {
           ListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
-            leading: NojinIcon(block.expanded ? NojinIconName.chevronDown : NojinIconName.chevronLeft, size: 18),
+            leading: Text(block.expanded ? '⌄' : '›', style: const TextStyle(fontSize: 22)),
             title: TextField(
               controller: TextEditingController(text: block.text)..selection =
                   TextSelection.collapsed(offset: block.text.length),
