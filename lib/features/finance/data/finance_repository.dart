@@ -441,7 +441,63 @@ class FinanceRepository {
     createdAt: _date(row['created_at']),
   );
 
-  DateTime _date(Object? value) => DateTime.fromMillisecondsSinceEpoch(int.parse(value.toString()), isUtc: true);
+  DateTime _date(Object? value) => DateTime.fromMillisecondsSinceEpoch(int.parse(value.toString()), isUtc: true);  Future<List<FinanceDebt>> listDebts({FinanceDebtType? type}) async {
+    final where = type == null ? '' : ' WHERE debt_type = ?';
+    final args = type == null ? <Object?>[] : [type.name];
+    final rows = await _database.connection.runSelect('SELECT * FROM finance_debts' + where + ' ORDER BY due_at ASC, created_at DESC', args);
+    return rows.map(_debtFromRow).toList(growable: false);
+  }
+
+  Future<FinanceDebt?> getDebt(String id) async {
+    final rows = await _database.connection.runSelect('SELECT * FROM finance_debts WHERE id = ? LIMIT 1', [id]);
+    return rows.isEmpty ? null : _debtFromRow(rows.first);
+  }
+
+  Future<FinanceDebt> createDebt({required String title, required String personName, required FinanceDebtType type, required int totalAmount, required IranCurrency currency, DateTime? dueAt, String note = ''}) async {
+    final cleanTitle = title.trim(), cleanPerson = personName.trim();
+    if (cleanTitle.isEmpty) throw ArgumentError('عنوان الزامی است.');
+    if (cleanPerson.isEmpty) throw ArgumentError('نام شخص الزامی است.');
+    if (totalAmount <= 0) throw ArgumentError('مبلغ باید بیشتر از صفر باشد.');
+    final now = DateTime.now().toUtc();
+    final item = FinanceDebt(id:_newId(), title:cleanTitle, personName:cleanPerson, type:type, totalAmount:totalAmount, settledAmount:0, currency:currency, dueAt:dueAt == null ? null : DateTime.utc(dueAt.year,dueAt.month,dueAt.day), note:note.trim(), createdAt:now, updatedAt:now);
+    await _database.connection.runCustom('INSERT INTO finance_debts(id,title,person_name,debt_type,total_amount,settled_amount,currency,due_at,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)',[item.id,item.title,item.personName,item.type.name,item.totalAmount,0,item.currency.name,item.dueAt?.millisecondsSinceEpoch,item.note,now.millisecondsSinceEpoch,now.millisecondsSinceEpoch]);
+    return item;
+  }
+
+  Future<List<FinanceDebtPayment>> listDebtPayments(String debtId) async {
+    final rows = await _database.connection.runSelect('SELECT * FROM finance_debt_payments WHERE debt_id = ? ORDER BY paid_at DESC', [debtId]);
+    return rows.map(_debtPaymentFromRow).toList(growable: false);
+  }
+
+  Future<FinanceDebtPayment> settleDebt({required String debtId, required String accountId, required int amount, String note = ''}) async {
+    if (amount <= 0) throw ArgumentError('مبلغ تسویه باید بیشتر از صفر باشد.');
+    final rows = await _database.connection.runSelect('SELECT d.*, a.currency AS account_currency, a.is_archived FROM finance_debts d JOIN finance_accounts a ON a.id = ? WHERE d.id = ? LIMIT 1', [accountId,debtId]);
+    if (rows.isEmpty) throw StateError('بدهی/طلب یا حساب پیدا نشد.');
+    final row = rows.first;
+    if (row['is_archived'].toString() == '1') throw StateError('حساب انتخاب‌شده بایگانی شده است.');
+    if (row['account_currency'].toString() != row['currency'].toString()) throw ArgumentError('واحد پول حساب و بدهی/طلب باید یکسان باشد.');
+    final remaining = int.parse(row['total_amount'].toString()) - int.parse(row['settled_amount'].toString());
+    if (remaining <= 0) throw StateError('این مورد قبلاً تسویه شده است.');
+    if (amount > remaining) throw ArgumentError('مبلغ تسویه نمی‌تواند بیشتر از مانده باشد.');
+    final type = FinanceDebtTypeX.fromKey(row['debt_type'].toString());
+    final now = DateTime.now().toUtc(), paymentId = _newId(), transactionId = _newId();
+    final transactionType = type == FinanceDebtType.payable ? FinanceTransactionType.expense : FinanceTransactionType.income;
+    final delta = transactionType == FinanceTransactionType.income ? amount : -amount;
+    final transactionTitle = type == FinanceDebtType.payable ? 'تسویه بدهی: \${row['person_name']}' : 'دریافت طلب: \${row['person_name']}';
+    final payment = FinanceDebtPayment(id:paymentId,debtId:debtId,amount:amount,accountId:accountId,transactionId:transactionId,paidAt:now,note:note.trim());
+    await _database.transaction((tx) async {
+      await tx.runCustom('INSERT INTO finance_transactions(id,account_id,title,amount,transaction_type,note,occurred_at,created_at) VALUES(?,?,?,?,?,?,?,?)',[transactionId,accountId,transactionTitle,amount,transactionType.name,note.trim(),now.millisecondsSinceEpoch,now.millisecondsSinceEpoch]);
+      await tx.runCustom('UPDATE finance_accounts SET balance = balance + ?, updated_at = ? WHERE id = ?',[delta,now.millisecondsSinceEpoch,accountId]);
+      await tx.runCustom('INSERT INTO finance_debt_payments(id,debt_id,amount,account_id,transaction_id,paid_at,note) VALUES(?,?,?,?,?,?,?)',[payment.id,payment.debtId,payment.amount,payment.accountId,payment.transactionId,payment.paidAt.millisecondsSinceEpoch,payment.note]);
+      await tx.runCustom('UPDATE finance_debts SET settled_amount = settled_amount + ?, updated_at = ? WHERE id = ?',[amount,now.millisecondsSinceEpoch,debtId]);
+    });
+    return payment;
+  }
+
+  FinanceDebt _debtFromRow(Map<String,Object?> row) => FinanceDebt(id:row['id'].toString(),title:row['title'].toString(),personName:row['person_name'].toString(),type:FinanceDebtTypeX.fromKey(row['debt_type'].toString()),totalAmount:int.parse(row['total_amount'].toString()),settledAmount:int.parse(row['settled_amount'].toString()),currency:IranCurrency.values.firstWhere((item)=>item.name==row['currency'].toString(),orElse:()=>IranCurrency.toman),dueAt:row['due_at']==null?null:DateTime.fromMillisecondsSinceEpoch(int.parse(row['due_at'].toString()),isUtc:true),note:row['note'].toString(),createdAt:DateTime.fromMillisecondsSinceEpoch(int.parse(row['created_at'].toString()),isUtc:true),updatedAt:DateTime.fromMillisecondsSinceEpoch(int.parse(row['updated_at'].toString()),isUtc:true));
+  FinanceDebtPayment _debtPaymentFromRow(Map<String,Object?> row) => FinanceDebtPayment(id:row['id'].toString(),debtId:row['debt_id'].toString(),amount:int.parse(row['amount'].toString()),accountId:row['account_id'].toString(),transactionId:row['transaction_id'].toString(),paidAt:DateTime.fromMillisecondsSinceEpoch(int.parse(row['paid_at'].toString()),isUtc:true),note:row['note'].toString());
+
+
   String _newId() => DateTime.now().toUtc().microsecondsSinceEpoch.toString() + '-' + Random().nextInt(1 << 32).toRadixString(16);
 }
 
