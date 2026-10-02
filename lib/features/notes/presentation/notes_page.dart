@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/icons/nojin_icons.dart';
@@ -514,6 +515,9 @@ class _BlockToolbar extends StatelessWidget {
           _Tool('متن', RichBlockType.text, onAdd),
           _Tool('عنوان', RichBlockType.heading, onAdd),
           _Tool('چک‌لیست', RichBlockType.checklist, onAdd),
+          _Tool('لیست', RichBlockType.bulletList, onAdd),
+          _Tool('شماره‌دار', RichBlockType.numberedList, onAdd),
+          _Tool('تاریخ', RichBlockType.date, onAdd),
           _Tool('نقل‌قول', RichBlockType.quote, onAdd),
           _Tool('کد', RichBlockType.code, onAdd),
           _Tool('خط', RichBlockType.divider, onAdd),
@@ -630,6 +634,33 @@ class _BlockEditorState extends State<_BlockEditor> {
             decoration: decoration,
           )),
         ]);
+      case RichBlockType.bulletList:
+      case RichBlockType.numberedList:
+        editor = TextField(
+          controller: _controller,
+          onChanged: widget.onChanged,
+          minLines: 3,
+          maxLines: 8,
+          decoration: decoration.copyWith(
+            hintText: block.type == RichBlockType.bulletList ? 'هر مورد در یک خط...' : 'هر مورد در یک خط...',
+            prefixText: block.type == RichBlockType.bulletList ? '• ' : '1. ',
+          ),
+        );
+      case RichBlockType.date:
+        final date = DateTime.tryParse(block.text)?.toUtc() ?? DateTime.now().toUtc();
+        editor = Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: NojinGradients.soft,
+            borderRadius: BorderRadius.circular(NojinRadii.md),
+          ),
+          child: Row(children: [
+            const NojinIcon(NojinIconName.sparkle, size: 18, color: NojinColors.indigo),
+            const SizedBox(width: 8),
+            Expanded(child: Text(IranDate.fromDateTime(date).display)),
+            TextButton(onPressed: () => widget.onChanged(DateTime.now().toUtc().toIso8601String()), child: const Text('امروز')),
+          ]),
+        );
       case RichBlockType.quote:
         editor = Container(
           decoration: const BoxDecoration(
@@ -644,14 +675,21 @@ class _BlockEditorState extends State<_BlockEditor> {
           ),
         );
       case RichBlockType.code:
-        editor = TextField(
+        editor = Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          TextField(
           controller: _controller,
           onChanged: widget.onChanged,
           minLines: 3,
           maxLines: 12,
           style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
           decoration: decoration.copyWith(hintText: 'کد'),
-        );
+          ),
+          Align(alignment: AlignmentDirectional.centerEnd, child: TextButton.icon(
+            onPressed: () => Clipboard.setData(ClipboardData(text: block.text)),
+            icon: const NojinIcon(NojinIconName.edit, size: 14),
+            label: const Text('کپی کد'),
+          )),
+        ]);
       case RichBlockType.toggle:
         editor = Column(children: [
           ListTile(
@@ -700,6 +738,9 @@ class _BlockEditorState extends State<_BlockEditor> {
     RichBlockType.checklist => 'کار موردنظر...',
     RichBlockType.quote => 'نقل‌قول...',
     RichBlockType.code => 'کد...',
+    RichBlockType.bulletList => 'هر مورد در یک خط...',
+    RichBlockType.numberedList => 'هر مورد در یک خط...',
+    RichBlockType.date => '',
     RichBlockType.toggle => 'عنوان بازشونده...',
     RichBlockType.divider => '',
   };
