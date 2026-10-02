@@ -1,6 +1,6 @@
 # NOJÎN — Phase Checklist
 
-آخرین وضعیت: **Phase 12 — Finance Foundation**
+آخرین وضعیت: **Phase 13 — Iranian Finance**
 
 ## Completed
 
@@ -14,8 +14,6 @@
 - [x] Phase 07 — Local Database
 - [x] Phase 08 — State Architecture
 
-## Remaining
-
 ### Notes
 - [x] Phase 09 — Notes Foundation
 - [x] Phase 10 — Rich Editor
@@ -23,7 +21,7 @@
 
 ### Finance
 - [x] Phase 12 — Finance Foundation
-- [ ] Phase 13 — Iranian Finance
+- [x] Phase 13 — Iranian Finance
 - [ ] Phase 14 — Finance Dashboard
 - [ ] Phase 15 — Installments
 - [ ] Phase 16 — Debt / Receivable
@@ -48,12 +46,8 @@
 
 ## Execution rule
 
-هر فاز باید مستقل بررسی شود و پس از پیاده‌سازی، تست و review، به `main` merge شود.
-
-ترتیب رسمی باقی‌مانده:
-
-`09 → 10 → 11 → 12 → 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20 → 21 → 22 → 23 → 24 → 25 → 26 → 27 → 28 → 29 → 30`
+هر فاز باید مستقل بررسی شود و پس از پیاده‌سازی، تست و review، به main merge شود.
 
 ## Current project testing policy
 
-فعلاً GitHub Actions / CI برای ساخت برنامه ایجاد نمی‌شود. پس از هر فاز مهم، پروژه در محیط محلی Windows با Flutter و Chrome/Android بررسی می‌شود و نتیجه آن برای فاز بعدی مبنا قرار می‌گیرد.
+فعلاً GitHub Actions / CI برای ساخت برنامه ایجاد نمی‌شود. پس از هر فاز مهم، پروژه در محیط محلی Windows با Flutter و Chrome/Android بررسی می‌شود.
