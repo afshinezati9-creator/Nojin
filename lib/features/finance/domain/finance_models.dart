@@ -1,3 +1,5 @@
+import '../../../core/iran/iran_money.dart';
+
 enum FinanceAccountType { cash, bank, wallet, savings, other }
 
 extension FinanceAccountTypeX on FinanceAccountType {
@@ -9,10 +11,7 @@ extension FinanceAccountTypeX on FinanceAccountType {
     FinanceAccountType.savings => 'پس‌انداز',
     FinanceAccountType.other => 'سایر',
   };
-  static FinanceAccountType fromKey(String value) => FinanceAccountType.values.firstWhere(
-    (item) => item.name == value,
-    orElse: () => FinanceAccountType.other,
-  );
+  static FinanceAccountType fromKey(String value) => FinanceAccountType.values.firstWhere((item) => item.name == value, orElse: () => FinanceAccountType.other);
 }
 
 enum FinanceTransactionType { income, expense }
@@ -24,38 +23,31 @@ extension FinanceTransactionTypeX on FinanceTransactionType {
 
 class FinanceAccount {
   const FinanceAccount({
-    required this.id,
-    required this.name,
-    required this.type,
-    required this.currency,
-    required this.balance,
-    required this.isArchived,
-    required this.createdAt,
-    required this.updatedAt,
+    required this.id, required this.name, required this.type, required this.currency,
+    required this.balance, required this.isArchived, required this.bankName,
+    required this.accountNumber, required this.cardNumber, required this.sheba,
+    required this.createdAt, required this.updatedAt,
   });
-
   final String id;
   final String name;
   final FinanceAccountType type;
-  final String currency;
+  final IranCurrency currency;
   final int balance;
   final bool isArchived;
+  final String? bankName;
+  final String? accountNumber;
+  final String? cardNumber;
+  final String? sheba;
   final DateTime createdAt;
   final DateTime updatedAt;
+  bool get isBankAccount => type == FinanceAccountType.bank;
 }
 
 class FinanceTransaction {
   const FinanceTransaction({
-    required this.id,
-    required this.accountId,
-    required this.title,
-    required this.amount,
-    required this.type,
-    required this.note,
-    required this.occurredAt,
-    required this.createdAt,
+    required this.id, required this.accountId, required this.title, required this.amount,
+    required this.type, required this.note, required this.occurredAt, required this.createdAt,
   });
-
   final String id;
   final String accountId;
   final String title;

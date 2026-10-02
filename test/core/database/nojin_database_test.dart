@@ -16,8 +16,8 @@ void main() {
 
   tearDown(() => database.close());
 
-  test('creates version 2 schema and indexes', () async {
-    expect(await database.schemaVersion(), 2);
+  test('creates version 3 schema and indexes', () async {
+    expect(await database.schemaVersion(), 3);
     expect(await database.isHealthy(), isTrue);
 
     final tables = await database.connection.runSelect(
@@ -96,5 +96,29 @@ void main() {
       ['rollback'],
     );
     expect(rows, isEmpty);
+  });
+
+  test('migrates version 2 finance accounts with Iranian fields', () async {
+    final raw = NativeDatabase.memory();
+    await raw.runCustom('CREATE TABLE nojin_meta (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL)');
+    await raw.runCustom(
+      'CREATE TABLE finance_accounts (id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, '
+      'account_type TEXT NOT NULL, currency TEXT NOT NULL DEFAULT "toman", balance INTEGER NOT NULL DEFAULT 0, '
+      'is_archived INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
+    );
+    await raw.runCustom(
+      'INSERT INTO nojin_meta(key, value) VALUES (?, ?)',
+      ['schema_version', '2'],
+    );
+
+    final upgraded = await NojinDatabase.fromConnection(DatabaseConnection.fromExecutor(raw));
+    expect(await upgraded.schemaVersion(), 3);
+    final columns = await upgraded.connection.runSelect('PRAGMA table_info(finance_accounts)', []);
+    final names = columns.map((row) => row['name']).toList();
+    expect(names, containsAll(<Object?>['bank_name', 'account_number', 'card_number', 'sheba']));
+    await upgraded.close();
+    database = await NojinDatabase.fromConnection(
+      DatabaseConnection.fromExecutor(NativeDatabase.memory()),
+    );
   });
 }

@@ -1,9 +1,9 @@
 abstract final class NojinSchema {
-  static const version = 2;
+  static const version = 3;
   static const createStatements = <String>[
     'CREATE TABLE app_settings (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL, updated_at INTEGER NOT NULL)',
     'CREATE TABLE notes (id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, content TEXT NOT NULL DEFAULT "", category TEXT NOT NULL DEFAULT "general", is_pinned INTEGER NOT NULL DEFAULT 0, is_archived INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
-    'CREATE TABLE finance_accounts (id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, account_type TEXT NOT NULL, currency TEXT NOT NULL DEFAULT "toman", balance INTEGER NOT NULL DEFAULT 0, is_archived INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
+    'CREATE TABLE finance_accounts (id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, account_type TEXT NOT NULL, currency TEXT NOT NULL DEFAULT "toman", balance INTEGER NOT NULL DEFAULT 0, is_archived INTEGER NOT NULL DEFAULT 0, bank_name TEXT, account_number TEXT, card_number TEXT, sheba TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
     'CREATE TABLE finance_transactions (id TEXT NOT NULL PRIMARY KEY, account_id TEXT NOT NULL, title TEXT NOT NULL, amount INTEGER NOT NULL, transaction_type TEXT NOT NULL, note TEXT NOT NULL DEFAULT "", occurred_at INTEGER NOT NULL, created_at INTEGER NOT NULL)',
     'CREATE TABLE planning_items (id TEXT NOT NULL PRIMARY KEY, item_type TEXT NOT NULL, title TEXT NOT NULL, status TEXT NOT NULL DEFAULT "active", scheduled_at INTEGER, due_at INTEGER, progress REAL NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
     'CREATE TABLE info_items (id TEXT NOT NULL PRIMARY KEY, item_type TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL DEFAULT "", is_pinned INTEGER NOT NULL DEFAULT 0, usage_count INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
@@ -21,7 +21,5 @@ abstract final class NojinSchema {
     'CREATE INDEX info_items_usage_idx ON info_items(usage_count)',
     'CREATE INDEX info_items_updated_at_idx ON info_items(updated_at)',
   ];
-  static const tableNames = <String>[
-    'app_settings','notes','finance_accounts','finance_transactions','planning_items','info_items','note_media',
-  ];
+  static const tableNames = <String>['app_settings','notes','finance_accounts','finance_transactions','planning_items','info_items','note_media'];
 }

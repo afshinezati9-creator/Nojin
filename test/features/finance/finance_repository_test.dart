@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nojin/core/database/nojin_database.dart';
+import 'package:nojin/core/iran/iran_money.dart';
 import 'package:nojin/features/finance/data/finance_repository.dart';
 import 'package:nojin/features/finance/domain/finance_models.dart';
 
@@ -67,4 +68,53 @@ void main() {
     await repository.deleteTransaction(tx.id);
     expect((await repository.getAccount(account.id))?.balance, 0);
   });
+
+  test('stores and validates Iranian bank details', () async {
+    final account = await repository.createAccount(
+      name: 'حساب ملت',
+      type: FinanceAccountType.bank,
+      currency: IranCurrency.toman,
+      bankName: 'ملت',
+      accountNumber: '123456789',
+      cardNumber: '6037997512345670',
+      sheba: 'IR062960000000100324200001',
+    );
+    final loaded = await repository.getAccount(account.id);
+    expect(loaded?.currency, IranCurrency.toman);
+    expect(loaded?.bankName, 'ملت');
+    expect(loaded?.accountNumber, '123456789');
+    expect(loaded?.cardNumber, '6037997512345670');
+    expect(loaded?.sheba, 'IR062960000000100324200001');
+  });
+
+  test('rejects invalid Iranian card and sheba numbers', () async {
+    expect(
+      () => repository.createAccount(
+        name: 'بانک',
+        type: FinanceAccountType.bank,
+        cardNumber: '1111111111111111',
+      ),
+      throwsA(isA<ArgumentError>()),
+    );
+    expect(
+      () => repository.createAccount(
+        name: 'بانک',
+        type: FinanceAccountType.bank,
+        sheba: 'IR062960000000100324200002',
+      ),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
+  test('keeps rial and toman as separate account currencies', () async {
+    final account = await repository.createAccount(
+      name: 'حساب ریالی',
+      type: FinanceAccountType.bank,
+      currency: IranCurrency.rial,
+      openingBalance: 10000,
+    );
+    expect(account.currency, IranCurrency.rial);
+    expect(IranMoney(account.balance, currency: account.currency).unit, 'ریال');
+  });
+
 }

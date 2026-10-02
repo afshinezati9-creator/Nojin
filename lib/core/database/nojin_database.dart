@@ -1,23 +1,19 @@
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
-
 import 'nojin_schema.dart';
 
 class NojinDatabase {
   NojinDatabase._(this.connection);
-
   final DatabaseConnection connection;
 
   static Future<NojinDatabase> open() async {
-    final database = NojinDatabase._(
-      driftDatabase(
-        name: 'nojin',
-        web: DriftWebOptions(
-          sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-          driftWorker: Uri.parse('drift_worker.js'),
-        ),
+    final database = NojinDatabase._(driftDatabase(
+      name: 'nojin',
+      web: DriftWebOptions(
+        sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+        driftWorker: Uri.parse('drift_worker.js'),
       ),
-    );
+    ));
     await database._initialize();
     return database;
   }
@@ -29,13 +25,8 @@ class NojinDatabase {
   }
 
   Future<void> _initialize() async {
-    await connection.runCustom(
-      'CREATE TABLE IF NOT EXISTS nojin_meta (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL)',
-    );
-    final rows = await connection.runSelect(
-      'SELECT value FROM nojin_meta WHERE key = ? LIMIT 1',
-      ['schema_version'],
-    );
+    await connection.runCustom('CREATE TABLE IF NOT EXISTS nojin_meta (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL)');
+    final rows = await connection.runSelect('SELECT value FROM nojin_meta WHERE key = ? LIMIT 1', ['schema_version']);
     final current = rows.isEmpty ? 0 : int.tryParse(rows.first['value']?.toString() ?? '') ?? 0;
     if (current == 0) {
       await transaction((tx) async {
@@ -67,6 +58,12 @@ class NojinDatabase {
             await tx.runCustom('CREATE TABLE note_media (id TEXT NOT NULL PRIMARY KEY, note_id TEXT NOT NULL, media_type TEXT NOT NULL, file_name TEXT NOT NULL, mime_type TEXT NOT NULL, bytes BLOB NOT NULL, size_bytes INTEGER NOT NULL, duration_ms INTEGER, created_at INTEGER NOT NULL)');
             await tx.runCustom('CREATE INDEX note_media_note_idx ON note_media(note_id, created_at)');
             break;
+          case 3:
+            await tx.runCustom('ALTER TABLE finance_accounts ADD COLUMN bank_name TEXT');
+            await tx.runCustom('ALTER TABLE finance_accounts ADD COLUMN account_number TEXT');
+            await tx.runCustom('ALTER TABLE finance_accounts ADD COLUMN card_number TEXT');
+            await tx.runCustom('ALTER TABLE finance_accounts ADD COLUMN sheba TEXT');
+            break;
           default:
             throw StateError('Missing migration for database version ' + version.toString() + '.');
         }
@@ -93,10 +90,7 @@ class NojinDatabase {
   }
 
   Future<int> schemaVersion() async {
-    final rows = await connection.runSelect(
-      'SELECT value FROM nojin_meta WHERE key = ? LIMIT 1',
-      ['schema_version'],
-    );
+    final rows = await connection.runSelect('SELECT value FROM nojin_meta WHERE key = ? LIMIT 1', ['schema_version']);
     return rows.isEmpty ? 0 : int.tryParse(rows.first['value']?.toString() ?? '') ?? 0;
   }
 
