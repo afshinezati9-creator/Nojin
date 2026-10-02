@@ -438,7 +438,7 @@ class _EditorState extends State<_Editor> {
                     IconButton(
                       tooltip: 'بستن',
                       onPressed: () => Navigator.pop(context),
-                      icon: const Text('×', style: TextStyle(fontSize: 26)),
+                      icon: const NojinIcon(NojinIconName.close, size: 20),
                     ),
                   ]),
                 ),
@@ -598,7 +598,7 @@ class _BlockEditorState extends State<_BlockEditor> {
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(children: [
           const Expanded(child: Divider()),
-          IconButton(onPressed: widget.onDelete, tooltip: 'حذف', icon: const Text('×')),
+          IconButton(onPressed: widget.onDelete, tooltip: 'حذف', icon: const NojinIcon(NojinIconName.delete, size: 16)),
         ]),
       );
     }
@@ -686,7 +686,7 @@ class _BlockEditorState extends State<_BlockEditor> {
           ),
           Align(alignment: AlignmentDirectional.centerEnd, child: TextButton.icon(
             onPressed: () => Clipboard.setData(ClipboardData(text: block.text)),
-            icon: const NojinIcon(NojinIconName.edit, size: 14),
+            icon: const NojinIcon(NojinIconName.copy, size: 14),
             label: const Text('کپی کد'),
           )),
         ]);
@@ -695,7 +695,7 @@ class _BlockEditorState extends State<_BlockEditor> {
           ListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
-            leading: Text(block.expanded ? '⌄' : '›', style: const TextStyle(fontSize: 22)),
+            leading: NojinIcon(block.expanded ? NojinIconName.chevronDown : NojinIconName.chevronLeft, size: 18),
             title: TextField(
               controller: _controller,
               onChanged: widget.onChanged,
@@ -724,9 +724,9 @@ class _BlockEditorState extends State<_BlockEditor> {
       child: Column(children: [
         editor,
         Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          IconButton(onPressed: widget.onUp, tooltip: 'بالا', icon: const Text('↑')),
-          IconButton(onPressed: widget.onDown, tooltip: 'پایین', icon: const Text('↓')),
-          IconButton(onPressed: widget.onDelete, tooltip: 'حذف بلوک', icon: const Text('×')),
+          IconButton(onPressed: widget.onUp, tooltip: 'بالا', icon: const NojinIcon(NojinIconName.arrowUp, size: 16)),
+          IconButton(onPressed: widget.onDown, tooltip: 'پایین', icon: const NojinIcon(NojinIconName.arrowDown, size: 16)),
+          IconButton(onPressed: widget.onDelete, tooltip: 'حذف بلوک', icon: const NojinIcon(NojinIconName.delete, size: 16)),
         ]),
       ]),
     );
