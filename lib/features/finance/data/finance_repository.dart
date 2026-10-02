@@ -543,7 +543,7 @@ class FinanceRepository {
     final row = rows.first;
     final amount = int.parse(row['amount'].toString());
     final withdrawal = row['is_withdrawal'].toString() == '1';
-    final delta = withdrawal ? -amount : amount;
+    final delta = withdrawal ? amount : -amount;
     final now = DateTime.now().toUtc();
     await _database.transaction((tx) async {
       await tx.runCustom('DELETE FROM finance_goal_entries WHERE id = ?', [entryId]);
