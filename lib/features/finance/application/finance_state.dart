@@ -94,3 +94,14 @@ final financeDashboardProvider = FutureProvider<FinanceDashboardSummary>((ref) a
   final repo = await ref.watch(financeRepositoryProvider.future);
   return repo.dashboardSummary();
 });
+
+
+final financeInstallmentPlansProvider = FutureProvider<List<FinanceInstallmentPlan>>((ref) async {
+  final repo = await ref.watch(financeRepositoryProvider.future);
+  return repo.listInstallmentPlans();
+});
+
+final financeInstallmentsProvider = FutureProvider.family<List<FinanceInstallment>, String>((ref, planId) async {
+  final repo = await ref.watch(financeRepositoryProvider.future);
+  return repo.listInstallments(planId);
+});
