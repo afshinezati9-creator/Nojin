@@ -548,8 +548,8 @@ class _BlockEditor extends StatefulWidget {
     required this.onToggle,
     required this.onExpanded,
     required this.onDelete,
-    required this.widget.onUp,
-    required this.widget.onDown,
+    required this.onUp,
+    required this.onDown,
   });
   final RichBlock block;
   final ValueChanged<String> onChanged;
@@ -610,7 +610,7 @@ class _BlockEditorState extends State<_BlockEditor> {
     );
 
     Widget editor;
-    switch (block.type) {
+    switch (widget.block.type) {
       case RichBlockType.heading:
         editor = TextField(
           controller: _controller,
@@ -636,9 +636,8 @@ class _BlockEditorState extends State<_BlockEditor> {
             border: BorderDirectional(start: BorderSide(color: NojinColors.indigo, width: 3)),
           ),
           child: TextField(
-            controller: TextEditingController(text: block.text)..selection =
-                TextSelection.collapsed(offset: block.text.length),
-            onChanged: onChanged,
+            controller: _controller,
+            onChanged: widget.onChanged,
             minLines: 2,
             maxLines: 8,
             decoration: decoration.copyWith(hintText: 'متن نقل‌قول'),
@@ -646,9 +645,8 @@ class _BlockEditorState extends State<_BlockEditor> {
         );
       case RichBlockType.code:
         editor = TextField(
-          controller: TextEditingController(text: block.text)..selection =
-              TextSelection.collapsed(offset: block.text.length),
-          onChanged: onChanged,
+          controller: _controller,
+          onChanged: widget.onChanged,
           minLines: 3,
           maxLines: 12,
           style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
@@ -666,7 +664,7 @@ class _BlockEditorState extends State<_BlockEditor> {
               onChanged: onChanged,
               decoration: decoration.copyWith(hintText: 'عنوان بازشونده'),
             ),
-            onTap: onExpanded,
+            onTap: widget.onExpanded,
           ),
           if (block.expanded)
             const Padding(
@@ -676,9 +674,8 @@ class _BlockEditorState extends State<_BlockEditor> {
         ]);
       case RichBlockType.text:
         editor = TextField(
-          controller: TextEditingController(text: block.text)..selection =
-              TextSelection.collapsed(offset: block.text.length),
-          onChanged: onChanged,
+          controller: _controller,
+          onChanged: widget.onChanged,
           minLines: 2,
           maxLines: 8,
           decoration: decoration.copyWith(hintText: 'متن را بنویسید...'),
@@ -690,9 +687,9 @@ class _BlockEditorState extends State<_BlockEditor> {
       child: Column(children: [
         editor,
         Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          IconButton(onPressed: onUp, tooltip: 'بالا', icon: const Text('↑')),
-          IconButton(onPressed: onDown, tooltip: 'پایین', icon: const Text('↓')),
-          IconButton(onPressed: onDelete, tooltip: 'حذف بلوک', icon: const Text('×')),
+          IconButton(onPressed: widget.onUp, tooltip: 'بالا', icon: const Text('↑')),
+          IconButton(onPressed: widget.onDown, tooltip: 'پایین', icon: const Text('↓')),
+          IconButton(onPressed: widget.onDelete, tooltip: 'حذف بلوک', icon: const Text('×')),
         ]),
       ]),
     );
