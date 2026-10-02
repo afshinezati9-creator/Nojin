@@ -71,6 +71,13 @@ class NojinDatabase {
             await tx.runCustom('CREATE INDEX finance_installments_plan_due_idx ON finance_installments(plan_id, due_at)');
             await tx.runCustom('CREATE INDEX finance_installments_status_idx ON finance_installments(paid_at, due_at)');
             break;
+          case 5:
+            await tx.runCustom('CREATE TABLE finance_debts (id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, person_name TEXT NOT NULL, debt_type TEXT NOT NULL, total_amount INTEGER NOT NULL, settled_amount INTEGER NOT NULL DEFAULT 0, currency TEXT NOT NULL DEFAULT "toman", due_at INTEGER, note TEXT NOT NULL DEFAULT "", created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)');
+            await tx.runCustom('CREATE TABLE finance_debt_payments (id TEXT NOT NULL PRIMARY KEY, debt_id TEXT NOT NULL, amount INTEGER NOT NULL, account_id TEXT NOT NULL, transaction_id TEXT NOT NULL, paid_at INTEGER NOT NULL, note TEXT NOT NULL DEFAULT "")');
+            await tx.runCustom('CREATE INDEX finance_debts_status_idx ON finance_debts(debt_type, due_at, settled_amount)');
+            await tx.runCustom('CREATE INDEX finance_debt_payments_debt_idx ON finance_debt_payments(debt_id, paid_at)');
+            await tx.runCustom('CREATE INDEX finance_debt_payments_transaction_idx ON finance_debt_payments(transaction_id)');
+            break;
           default:
             throw StateError('Missing migration for database version ' + version.toString() + '.');
         }
