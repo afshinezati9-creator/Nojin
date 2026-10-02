@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/nojin_database_provider.dart';
+import '../../../core/iran/iran_money.dart';
 import '../data/finance_repository.dart';
 import '../domain/finance_models.dart';
 
@@ -21,16 +22,56 @@ class FinanceAccountsNotifier extends AsyncNotifier<List<FinanceAccount>> {
 
   Future<void> refresh() async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => ref.read(financeRepositoryProvider.future).then((r) => r.listAccounts()));
+    state = await AsyncValue.guard(
+      () => ref.read(financeRepositoryProvider.future).then((r) => r.listAccounts()),
+    );
   }
 
   Future<void> createAccount({
     required String name,
     required FinanceAccountType type,
+    required IranCurrency currency,
     required int openingBalance,
+    String? bankName,
+    String? accountNumber,
+    String? cardNumber,
+    String? sheba,
   }) async {
     final repo = await ref.read(financeRepositoryProvider.future);
-    await repo.createAccount(name: name, type: type, openingBalance: openingBalance);
+    await repo.createAccount(
+      name: name,
+      type: type,
+      currency: currency,
+      openingBalance: openingBalance,
+      bankName: bankName,
+      accountNumber: accountNumber,
+      cardNumber: cardNumber,
+      sheba: sheba,
+    );
+    await refresh();
+  }
+
+  Future<void> updateAccount({
+    required String id,
+    required String name,
+    required FinanceAccountType type,
+    required IranCurrency currency,
+    String? bankName,
+    String? accountNumber,
+    String? cardNumber,
+    String? sheba,
+  }) async {
+    final repo = await ref.read(financeRepositoryProvider.future);
+    await repo.updateAccount(
+      id: id,
+      name: name,
+      type: type,
+      currency: currency,
+      bankName: bankName,
+      accountNumber: accountNumber,
+      cardNumber: cardNumber,
+      sheba: sheba,
+    );
     await refresh();
   }
 
@@ -41,7 +82,9 @@ class FinanceAccountsNotifier extends AsyncNotifier<List<FinanceAccount>> {
   }
 }
 
-final financeTransactionsProvider = FutureProvider.family<List<FinanceTransaction>, String>((ref, accountId) async {
-  final repo = await ref.watch(financeRepositoryProvider.future);
-  return repo.listTransactions(accountId);
-});
+final financeTransactionsProvider = FutureProvider.family<List<FinanceTransaction>, String>(
+  (ref, accountId) async {
+    final repo = await ref.watch(financeRepositoryProvider.future);
+    return repo.listTransactions(accountId);
+  },
+);
