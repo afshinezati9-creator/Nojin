@@ -384,4 +384,22 @@ void main() {
   });
 
 
+  test('deleting a goal withdrawal reverses the goal balance', () async {
+    final goal = await repository.createGoal(
+      title: 'ذخیره',
+      targetAmount: 3000000,
+      currency: IranCurrency.toman,
+    );
+    await repository.addGoalEntry(goalId: goal.id, amount: 2000000);
+    final withdrawal = await repository.addGoalEntry(
+      goalId: goal.id,
+      amount: 500000,
+      isWithdrawal: true,
+    );
+    expect((await repository.getGoal(goal.id))?.currentAmount, 1500000);
+    await repository.deleteGoalEntry(withdrawal.id);
+    expect((await repository.getGoal(goal.id))?.currentAmount, 2000000);
+  });
+
+
 }
