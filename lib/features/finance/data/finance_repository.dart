@@ -441,7 +441,142 @@ class FinanceRepository {
     createdAt: _date(row['created_at']),
   );
 
-  DateTime _date(Object? value) => DateTime.fromMillisecondsSinceEpoch(int.parse(value.toString()), isUtc: true);  Future<List<FinanceDebt>> listDebts({FinanceDebtType? type}) async {
+  DateTime _date(Object? value) => DateTime.fromMillisecondsSinceEpoch(int.parse(value.toString()), isUtc: true);  Future<List<FinanceGoal>> listGoals({FinanceGoalType? type}) async {
+    final where = type == null ? '' : ' WHERE goal_type = ?';
+    final args = type == null ? <Object?>[] : [type.name];
+    final rows = await _database.connection.runSelect(
+      'SELECT * FROM finance_goals' + where + ' ORDER BY due_at ASC, created_at DESC',
+      args,
+    );
+    return rows.map(_goalFromRow).toList(growable: false);
+  }
+
+  Future<FinanceGoal?> getGoal(String id) async {
+    final rows = await _database.connection.runSelect(
+      'SELECT * FROM finance_goals WHERE id = ? LIMIT 1',
+      [id],
+    );
+    return rows.isEmpty ? null : _goalFromRow(rows.first);
+  }
+
+  Future<FinanceGoal> createGoal({
+    required String title,
+    FinanceGoalType type = FinanceGoalType.goal,
+    required int targetAmount,
+    required IranCurrency currency,
+    DateTime? dueAt,
+    String note = '',
+  }) async {
+    final clean = title.trim();
+    if (clean.isEmpty) throw ArgumentError('عنوان هدف الزامی است.');
+    if (targetAmount <= 0) throw ArgumentError('مبلغ هدف باید بیشتر از صفر باشد.');
+    final now = DateTime.now().toUtc();
+    final item = FinanceGoal(
+      id: _newId(),
+      title: clean,
+      type: type,
+      targetAmount: targetAmount,
+      currentAmount: 0,
+      currency: currency,
+      dueAt: dueAt == null ? null : DateTime.utc(dueAt.year, dueAt.month, dueAt.day),
+      note: note.trim(),
+      createdAt: now,
+      updatedAt: now,
+    );
+    await _database.connection.runCustom(
+      'INSERT INTO finance_goals(id,title,goal_type,target_amount,current_amount,currency,due_at,note,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
+      [item.id,item.title,item.type.name,item.targetAmount,0,item.currency.name,item.dueAt?.millisecondsSinceEpoch,item.note,item.createdAt.millisecondsSinceEpoch,item.updatedAt.millisecondsSinceEpoch],
+    );
+    return item;
+  }
+
+  Future<List<FinanceGoalEntry>> listGoalEntries(String goalId) async {
+    final rows = await _database.connection.runSelect(
+      'SELECT * FROM finance_goal_entries WHERE goal_id = ? ORDER BY occurred_at DESC',
+      [goalId],
+    );
+    return rows.map(_goalEntryFromRow).toList(growable: false);
+  }
+
+  Future<FinanceGoalEntry> addGoalEntry({
+    required String goalId,
+    required int amount,
+    bool isWithdrawal = false,
+    String note = '',
+    DateTime? occurredAt,
+  }) async {
+    if (amount <= 0) throw ArgumentError('مبلغ واریز/برداشت باید بیشتر از صفر باشد.');
+    final goal = await getGoal(goalId);
+    if (goal == null) throw StateError('هدف مالی پیدا نشد.');
+    if (isWithdrawal && amount > goal.currentAmount) {
+      throw ArgumentError('برداشت نمی‌تواند بیشتر از موجودی فعلی هدف باشد.');
+    }
+    final now = DateTime.now().toUtc();
+    final item = FinanceGoalEntry(
+      id: _newId(),
+      goalId: goalId,
+      amount: amount,
+      isWithdrawal: isWithdrawal,
+      occurredAt: (occurredAt ?? now).toUtc(),
+      note: note.trim(),
+    );
+    final delta = isWithdrawal ? -amount : amount;
+    await _database.transaction((tx) async {
+      await tx.runCustom(
+        'INSERT INTO finance_goal_entries(id,goal_id,amount,is_withdrawal,occurred_at,note) VALUES(?,?,?,?,?,?)',
+        [item.id,item.goalId,item.amount,item.isWithdrawal ? 1 : 0,item.occurredAt.millisecondsSinceEpoch,item.note],
+      );
+      await tx.runCustom(
+        'UPDATE finance_goals SET current_amount = current_amount + ?, updated_at = ? WHERE id = ?',
+        [delta,now.millisecondsSinceEpoch,goalId],
+      );
+    });
+    return item;
+  }
+
+  Future<void> deleteGoalEntry(String entryId) async {
+    final rows = await _database.connection.runSelect(
+      'SELECT goal_id, amount, is_withdrawal FROM finance_goal_entries WHERE id = ? LIMIT 1',
+      [entryId],
+    );
+    if (rows.isEmpty) return;
+    final row = rows.first;
+    final amount = int.parse(row['amount'].toString());
+    final withdrawal = row['is_withdrawal'].toString() == '1';
+    final delta = withdrawal ? -amount : amount;
+    final now = DateTime.now().toUtc();
+    await _database.transaction((tx) async {
+      await tx.runCustom('DELETE FROM finance_goal_entries WHERE id = ?', [entryId]);
+      await tx.runCustom(
+        'UPDATE finance_goals SET current_amount = current_amount + ?, updated_at = ? WHERE id = ?',
+        [delta,now.millisecondsSinceEpoch,row['goal_id']],
+      );
+    });
+  }
+
+  FinanceGoal _goalFromRow(Map<String,Object?> row) => FinanceGoal(
+    id: row['id'].toString(),
+    title: row['title'].toString(),
+    type: FinanceGoalTypeX.fromKey(row['goal_type'].toString()),
+    targetAmount: int.parse(row['target_amount'].toString()),
+    currentAmount: int.parse(row['current_amount'].toString()),
+    currency: IranCurrency.values.firstWhere((item) => item.name == row['currency'].toString(), orElse: () => IranCurrency.toman),
+    dueAt: row['due_at'] == null ? null : DateTime.fromMillisecondsSinceEpoch(int.parse(row['due_at'].toString()), isUtc: true),
+    note: row['note']?.toString() ?? '',
+    createdAt: _date(row['created_at']),
+    updatedAt: _date(row['updated_at']),
+  );
+
+  FinanceGoalEntry _goalEntryFromRow(Map<String,Object?> row) => FinanceGoalEntry(
+    id: row['id'].toString(),
+    goalId: row['goal_id'].toString(),
+    amount: int.parse(row['amount'].toString()),
+    isWithdrawal: row['is_withdrawal'].toString() == '1',
+    occurredAt: _date(row['occurred_at']),
+    note: row['note']?.toString() ?? '',
+  );
+
+  Future<List<FinanceDebt>> listDebts({FinanceDebtType? type}) async {
     final where = type == null ? '' : ' WHERE debt_type = ?';
     final args = type == null ? <Object?>[] : [type.name];
     final rows = await _database.connection.runSelect('SELECT * FROM finance_debts' + where + ' ORDER BY due_at ASC, created_at DESC', args);
