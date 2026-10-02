@@ -17,7 +17,7 @@ void main() {
   tearDown(() => database.close());
 
   test('creates version 4 schema and indexes', () async {
-    expect(await database.schemaVersion(), 4);
+    expect(await database.schemaVersion(), 5);
     expect(await database.isHealthy(), isTrue);
 
     final tables = await database.connection.runSelect(
@@ -46,7 +46,7 @@ void main() {
       [],
     );
 
-    expect(indexes.length, 15);
+    expect(indexes.length, 18);
   });
 
   test('settings repository persists and updates values', () async {
@@ -152,6 +152,25 @@ void main() {
     database = await NojinDatabase.fromConnection(
       DatabaseConnection.fromExecutor(NativeDatabase.memory()),
     );
+  });
+
+  test('migrates version 4 database to debt schema', () async {
+    final raw = NativeDatabase.memory();
+    await raw.runCustom('CREATE TABLE nojin_meta (key TEXT NOT NULL PRIMARY KEY, value TEXT NOT NULL)');
+    await raw.runCustom(
+      'CREATE TABLE finance_accounts (id TEXT NOT NULL PRIMARY KEY, name TEXT NOT NULL, account_type TEXT NOT NULL, currency TEXT NOT NULL DEFAULT "toman", balance INTEGER NOT NULL DEFAULT 0, is_archived INTEGER NOT NULL DEFAULT 0, bank_name TEXT, account_number TEXT, card_number TEXT, sheba TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)',
+    );
+    await raw.runCustom('CREATE TABLE finance_transactions (id TEXT NOT NULL PRIMARY KEY, account_id TEXT NOT NULL, title TEXT NOT NULL, amount INTEGER NOT NULL, transaction_type TEXT NOT NULL, note TEXT NOT NULL DEFAULT "", occurred_at INTEGER NOT NULL, created_at INTEGER NOT NULL)');
+    await raw.runCustom('CREATE TABLE finance_installment_plans (id TEXT NOT NULL PRIMARY KEY, title TEXT NOT NULL, total_amount INTEGER NOT NULL, installment_amount INTEGER NOT NULL, installment_count INTEGER NOT NULL, currency TEXT NOT NULL DEFAULT "toman", first_due_at INTEGER NOT NULL, interval_months INTEGER NOT NULL DEFAULT 1, note TEXT NOT NULL DEFAULT "", created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)');
+    await raw.runCustom('CREATE TABLE finance_installments (id TEXT NOT NULL PRIMARY KEY, plan_id TEXT NOT NULL, sequence INTEGER NOT NULL, due_at INTEGER NOT NULL, amount INTEGER NOT NULL, paid_at INTEGER, transaction_id TEXT)');
+    await raw.runCustom('INSERT INTO nojin_meta(key, value) VALUES (?, ?)', ['schema_version', '4']);
+    final upgraded = await NojinDatabase.fromConnection(DatabaseConnection.fromExecutor(raw));
+    expect(await upgraded.schemaVersion(), 5);
+    final tables = await upgraded.connection.runSelect(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'finance_debt%' ORDER BY name", [],
+    );
+    expect(tables.map((row) => row['name']).toList(), containsAll(<Object?>['finance_debts','finance_debt_payments']));
+    await upgraded.close();
   });
 
 }
