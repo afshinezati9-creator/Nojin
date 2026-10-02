@@ -11,7 +11,7 @@ extension NoteCategoryX on NoteCategory {
 
   String get label => switch (this) {
         NoteCategory.ideas => 'ایده‌ها',
-        NoteCategory.work => 'کار',
+        NoteCategory.work => 'کاری',
         NoteCategory.personal => 'شخصی',
         NoteCategory.study => 'مطالعه',
         NoteCategory.general => 'عمومی',
