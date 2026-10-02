@@ -1,5 +1,3 @@
-import 'package:drift/drift.dart';
-
 abstract final class NojinSchema {
   static const version = 1;
   static const createStatements = <String>[
