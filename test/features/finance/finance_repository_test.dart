@@ -201,6 +201,7 @@ void main() {
       firstDueAt: DateTime.utc(2020, 1, 1),
     );
     final item = (await repository.listInstallments(plan.id)).first;
+    expect(item.statusAt(DateTime.utc(2020, 1, 1, 23, 59)), InstallmentStatus.pending);
     expect(item.statusAt(DateTime.utc(2020, 2, 1)), InstallmentStatus.overdue);
     expect(item.paidAt, isNull);
   });
